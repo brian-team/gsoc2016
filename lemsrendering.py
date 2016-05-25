@@ -5,11 +5,17 @@ class LEMSRenderer(NodeRenderer):
     expression_ops.update({
           # BinOp
           'Pow': '^',
+          'Mod': '%', #???
+          # Compare
+          'Lt': '.lt.',
+          'LtE': '.le.',
+          'Gt': '.gt.',
+          'GtE': '.ge.',
+          'Eq': '.eq.',
+          'NotEq': '.ne.',
           # Unary ops
+          'Not': '.not.',
           # Bool ops
+          'And': '.and.',
+          'Or': '.or.'
           })
-    
-    def render_NameConstant(self, node):
-        # In Python 3.4, None, True and False go here
-        return {True: 'true',
-                False: 'false'}.get(node.value, node.value)
