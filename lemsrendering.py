@@ -5,7 +5,7 @@ class LEMSRenderer(NodeRenderer):
     expression_ops.update({
           # BinOp
           'Pow': '^',
-          'Mod': '%', #???
+          # ??? 'Mod': '%', 
           # Compare
           'Lt': '.lt.',
           'LtE': '.le.',
