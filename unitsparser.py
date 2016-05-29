@@ -4,6 +4,19 @@ import re
 name_to_unit = {u.dispname: u for u in all_units}
 
 def from_string(rep):
+    """
+    Returns `Quantity` object from text representation of value.
+
+    Parameters
+    ----------
+    rep : `str`
+        text representation of value with unit
+
+    Returns
+    -------
+    q : `Quantity`
+        Brian Quantity object
+    """
     # match value
     m = re.match('-?[0-9]+\.?([0-9]+)?[eE]?-?([0-9]+)?', rep)
     if m:
