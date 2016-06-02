@@ -3,14 +3,15 @@ import re
 
 name_to_unit = {u.dispname: u for u in all_units}
 
+
 def from_string(rep):
     """
-    Returns `Quantity` object from text representation of value.
+    Returns `Quantity` object from text representation of a value.
 
     Parameters
     ----------
     rep : `str`
-        text representation of value with unit
+        text representation of a value with unit
 
     Returns
     -------
@@ -23,17 +24,17 @@ def from_string(rep):
         value = rep[0:m.end()]
         rep = rep[m.end():]
     else:
-        raise ValueError("Emtpty value given")
+        raise ValueError("Empty value given")
     # match unit
     m = re.match(' ?([a-zA-Z]+)', rep)
     unit = None
     if m:
         unit = rep[0:m.end()].strip()
         rep = rep[m.end():]
-    # match exponenet
+    # match exponent
     m = re.match('-?([0-9]+)?', rep)
     exponent = None
-    if len(rep)>0 and m:
+    if len(rep) > 0 and m:
         exponent = rep[0:m.end()]
     if value and unit and exponent:
         return float(value) * name_to_unit[unit]**float(exponent)
@@ -45,7 +46,8 @@ def from_string(rep):
 if __name__ == '__main__':
     from brian2 import *
     testlist = ["1 mV", "1.234mV", "1.2e-4 mV", "1.23e-5A", "1.23e4A",
-                "1.45E-8 m", "1.23E-8m2", "60", "6000", "123000", "-1.00000008E8"]
+                "1.45E-8 m", "1.23E-8m2", "60", "6000", "123000",
+                "-1.00000008E8"]
     for i in testlist:
         from_string(i)
     print 'ok'
