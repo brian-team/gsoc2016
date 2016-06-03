@@ -77,7 +77,7 @@ def read_lems_dims(nmlcdpath=""):
     domtree = parse(path)
     collection = domtree.documentElement
     dimsCollection = collection.getElementsByTagName("Dimension")
-    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3}  # don't know names for temp, luminosity, amount
+    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3, "k":4, "n":5}  # luminosity ?
     lems_dimensions = dict()
     for dc in dimsCollection:
         name_ = dc.getAttribute("name")

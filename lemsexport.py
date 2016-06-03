@@ -1,3 +1,4 @@
+from collections import defaultdict
 from brian2 import *
 from brian2.groups.neurongroup import NeuronGroup
 from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
@@ -9,6 +10,8 @@ from lemsrendering import *
 from supporting import read_lems_units, read_lems_dims
 
 import pdb
+
+SPIKE = "spike"
 
 nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
 lems_dims = read_lems_dims(nmlcdpath=nmlcdpath)
@@ -50,6 +53,12 @@ def _determine_parameters(paramdict):
             dim = _determine_dimension(paramdict[var])
             yield lems.Parameter(var, dim)
 
+def _equation_separator(equation):
+    """
+    Separates *equation* (str) to LHS and RHS.
+    """
+    lhs, rhs = equation.split('=')
+    return lhs.strip(), rhs.strip()
 
 def create_lems_model(network=None):
     """
@@ -73,7 +82,9 @@ def create_lems_model(network=None):
         dynamics = lems.Dynamics()
         ng_equations = obj.equations._equations
         # first step is to extract state and derived variables
+        equation_types = defaultdict(list)
         for var in ng_equations:
+            equation_types[ng_equations[var].type].append(var)
             if ng_equations[var].type == DIFFERENTIAL_EQUATION:
                 sv_ = lems.StateVariable(var,
                                          dimension=_determine_dimension(ng_equations[var].unit)
@@ -84,10 +95,24 @@ def create_lems_model(network=None):
                                            dimension=_determine_dimension(ng_equations[var].unit),
                                            value=str(ng_equations[var].expr))
                 dynamics.add_derived_variable(dv_)
-        #if group._refractory:
-        #    continue
-        #else:
-        #    pass
+        # events handling (e.g. spikes)
+        for ev in obj.events:
+            event_out = lems.EventOut(ev)
+            oc = lems.OnCondition(renderer.render_expr(obj.events[ev]))
+            oc.add_action(event_out)
+            spike_event_eq = _equation_separator(obj.event_codes[ev])
+            sa = lems.StateAssignment(spike_event_eq[0], spike_event_eq[1])
+            oc.add_action(sa)
+            dynamics.add_event_handler(oc)
+        # integration regime
+        if obj._refractory:
+            integr_regime = lems.Regime('integrating', dynamics, True) # True -> initial regime
+            dynamics.add_regime(integr_regime)
+            # TODO !!!!!!
+        for var in equation_types[DIFFERENTIAL_EQUATION]:
+            td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
+            dynamics.add_time_derivative(td)
+
         component.dynamics = dynamics
         # adding component to the model
         model.add(component)
