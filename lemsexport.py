@@ -5,9 +5,10 @@ from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
 import lems.api as lems
+from extramodel import ExtraModel
 
 from lemsrendering import *
-from supporting import read_lems_units, read_lems_dims
+from supporting import read_lems_units, read_lems_dims, brian_unit_to_lems
 
 import pdb
 
@@ -47,6 +48,7 @@ def _determine_parameters(paramdict):
     Iterator giving `lems.Parameter` for every parameter from *paramdict*.
     """
     for var in paramdict:
+        if var=='init': continue              # initializers (to remove) 
         if is_dimensionless(paramdict[var]):
             yield lems.Parameter(var, "none")
         else:
@@ -65,36 +67,47 @@ def create_lems_model(network=None):
     From given *network* returns LEMS model object.
     """
     renderer = LEMSRenderer()
-    model = lems.Model()
+    model = ExtraModel()     # extramodel extends lems.Model
 
     if type(network) is not Network:
         net = Network(collect(level=1))
     else:
         net = network
-    for obj in net.objects:
+    component_params = defaultdict(list)
+    for e, obj in enumerate(net.objects):
         if not type(obj) is NeuronGroup:
             continue
-        component = lems.ComponentType(obj.name)
+        ct_name = "neuron{}".format(e+1)
+        component_type = lems.ComponentType(ct_name)
         # adding parameters
         for param in _determine_parameters(obj.namespace):  # in the future we'd like to get rid of namespace
-            component.add(param)
+            component_type.add(param)
+        # common things for every neuron definition
+        component_type.add(lems.EventPort(name='spike', direction='out'))
         # dynamics of the network
         dynamics = lems.Dynamics()
         ng_equations = obj.equations._equations
         # first step is to extract state and derived variables
-        equation_types = defaultdict(list)
+        #             differential equation      -> state
+        #             parameter or subexpression -> derived
         for var in ng_equations:
-            equation_types[ng_equations[var].type].append(var)
             if ng_equations[var].type == DIFFERENTIAL_EQUATION:
-                sv_ = lems.StateVariable(var,
-                                         dimension=_determine_dimension(ng_equations[var].unit)
-                                         )
+                dim_ = _determine_dimension(ng_equations[var].unit)
+                sv_ = lems.StateVariable(var, dimension=dim_, exposure=var)
                 dynamics.add_state_variable(sv_)
+                component_type.add(lems.Exposure(var, dimension=dim_))
             elif ng_equations[var].type in (PARAMETER, SUBEXPRESSION):
-                dv_ = lems.DerivedVariable(var,
-                                           dimension=_determine_dimension(ng_equations[var].unit),
-                                           value=str(ng_equations[var].expr))
-                dynamics.add_derived_variable(dv_)
+                dim_ = _determine_dimension(ng_equations[var].unit)
+                sv_ = lems.StateVariable(var, dimension=dim_)
+                dynamics.add_state_variable(sv_)
+        # what happens at initialization
+        onstart = lems.OnStart()
+        for var in obj.equations.names:
+            init_value = obj.namespace['init'][var] # initializers will be removed in the future
+            if type(init_value) != str:
+                init_value = brian_unit_to_lems(init_value)
+            onstart.add(lems.StateAssignment(var, init_value))
+        dynamics.add(onstart)
         # events handling (e.g. spikes)
         for ev in obj.events:
             event_out = lems.EventOut(ev)
@@ -109,12 +122,14 @@ def create_lems_model(network=None):
             integr_regime = lems.Regime('integrating', dynamics, True) # True -> initial regime
             dynamics.add_regime(integr_regime)
             # TODO !!!!!!
-        for var in equation_types[DIFFERENTIAL_EQUATION]:
+        for var in obj.equations.diff_eq_names:
             td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
             dynamics.add_time_derivative(td)
 
-        component.dynamics = dynamics
+        component_type.dynamics = dynamics
         # adding component to the model
-        model.add(component)
+        model.add_component_type(component_type)
+        obj.namespace.pop("init", None)                # filter out init
+        model.add(lems.Component("n{}".format(e+1), ct_name, **obj.namespace))
+        # creating network of components
     return model
-
