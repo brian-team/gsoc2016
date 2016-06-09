@@ -5,6 +5,8 @@ from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
 import lems.api as lems
+import neuroml
+import neuroml.writers as writers
 
 from lemsrendering import *
 from supporting import read_lems_units, read_lems_dims, brian_unit_to_lems
@@ -86,7 +88,6 @@ def create_lems_model(network=None):
     component_params = defaultdict(list)
     model.add_constant(lems.Constant('mV', '0.001', 'voltage', symbol='mV'))
     model.add_constant(lems.Constant('ms', '0.001', 'time', symbol='ms'))
-    network = lems.Network('net')    
 
     for e, obj in enumerate(net.objects):
         if not type(obj) is NeuronGroup:
@@ -145,7 +146,14 @@ def create_lems_model(network=None):
         model.add_component_type(component_type)
         obj.namespace.pop("init", None)                # filter out init
         model.add(lems.Component("n{}".format(e+1), ct_name, **obj.namespace))
-        # creating network of components
-        network.add(lems.Population("neuronpop{}".format(e+1), "n{}".format(e+1), obj.namespace["n"]))
-    model.add_network(network)
     return model
+
+def create_nml_network(include, nml_file='name.xml'):
+    nml_doc = neuroml.NeuroMLDocument()
+    nml_doc.includes.append(neuroml.Include(include))
+    network = neuroml.Network(id='net')
+    pop = neuroml.Population(id='neuropop', component='n1', size='100')
+    network.populations.append(pop)
+    nml_doc.networks.append(network)
+    writers.NeuroMLWriter.write(nml_doc, nml_file)
+    return None
