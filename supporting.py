@@ -56,6 +56,13 @@ def from_string(rep):
     else:
         return float(value)
 
+def brian_unit_to_lems(valunit):
+    'Simply adds * between value and unit, e.g. "20. mV" -> "20.*mV"'
+    if float(valunit)==0:
+        return '0'
+    if type(valunit)!=str:
+        valunit = str(valunit)
+    return valunit.replace(' ', '*')
 
 def read_lems_dims(nmlcdpath=""):
     """
@@ -77,7 +84,7 @@ def read_lems_dims(nmlcdpath=""):
     domtree = parse(path)
     collection = domtree.documentElement
     dimsCollection = collection.getElementsByTagName("Dimension")
-    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3, "k":4, "n":5}  # luminosity ?
+    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3, "k":4, "n":5, "j":6}
     lems_dimensions = dict()
     for dc in dimsCollection:
         name_ = dc.getAttribute("name")

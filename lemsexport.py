@@ -5,7 +5,6 @@ from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
 import lems.api as lems
-from extramodel import ExtraModel
 
 from lemsrendering import *
 from supporting import read_lems_units, read_lems_dims, brian_unit_to_lems
@@ -17,6 +16,16 @@ SPIKE = "spike"
 nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
 lems_dims = read_lems_dims(nmlcdpath=nmlcdpath)
 lems_units = read_lems_units(nmlcdpath=nmlcdpath)
+
+all_units_to_const = dict()
+
+def _find_precision(value):
+    "Returns precision from a float number eg 0.003 -> 0.001"
+    splitted = str(value).split('.')
+    if len(splitted[0]) > 1:
+        return 10**len(splitted[0])
+    else:
+        return 10**(-1*len(splitted[1]))
 
 def _determine_dimension(value):
     """
@@ -62,18 +71,23 @@ def _equation_separator(equation):
     lhs, rhs = equation.split('=')
     return lhs.strip(), rhs.strip()
 
+
 def create_lems_model(network=None):
     """
     From given *network* returns LEMS model object.
     """
     renderer = LEMSRenderer()
-    model = ExtraModel()     # extramodel extends lems.Model
+    model = lems.Model()
 
     if type(network) is not Network:
         net = Network(collect(level=1))
     else:
         net = network
     component_params = defaultdict(list)
+    model.add_constant(lems.Constant('mV', '0.001', 'voltage', symbol='mV'))
+    model.add_constant(lems.Constant('ms', '0.001', 'time', symbol='ms'))
+    network = lems.Network('net')    
+
     for e, obj in enumerate(net.objects):
         if not type(obj) is NeuronGroup:
             continue
@@ -132,4 +146,6 @@ def create_lems_model(network=None):
         obj.namespace.pop("init", None)                # filter out init
         model.add(lems.Component("n{}".format(e+1), ct_name, **obj.namespace))
         # creating network of components
+        network.add(lems.Population("neuronpop{}".format(e+1), "n{}".format(e+1), obj.namespace["n"]))
+    model.add_network(network)
     return model
