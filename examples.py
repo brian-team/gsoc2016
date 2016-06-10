@@ -5,16 +5,22 @@ from lemsexport import *
 # http://brian2.readthedocs.io/en/2.0rc1/examples/IF_curve_LIF.html
 
 run_monitor = False
+refractory = False
 
 n = 100
 duration = 5*second
 tau = 10*ms
 
-eqs = '''
-dv/dt = (v0 - v) / tau : volt 
-v0 : volt
-'''
-
+if refractory:
+    eqs = '''
+    dv/dt = (v0 - v) / tau : volt (unless refractory)
+    v0 : volt
+    '''
+else:
+    eqs = '''
+    dv/dt = (v0 - v) / tau : volt
+    v0 : volt
+    '''
 
 initializers = {'v': 0*mV,
                 'v0': '20*mV * i / (n-1)'
@@ -24,14 +30,17 @@ namespace = {'n':n,
              'tau':tau,
              'init': initializers
             }
-
-group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
-                    method='linear', namespace=namespace)
+if refractory:
+    group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
+                         refractory=15*ms, method='linear', namespace=namespace)
+else:
+    group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
+                         method='linear', namespace=namespace)
 
 group.v = 0*mV
 group.v0 = '20*mV * i / (n-1)'
 
-model_name = 'lifmodel.xml'
+model_name = 'lifmodel{}.xml'.format("" if refractory else "ref")
 model = create_lems_model()
 model.add(lems.Include("NeuroML2CoreTypes.xml"))
 model.add(lems.Include("Simulation.xml"))
@@ -52,7 +61,7 @@ modelstr = modelstr.replace("</Lems>", """
   </Display>
   </Simulation>
   <Target component="sim1" />
-  </Lems>
+</Lems>
 """)
 
 with open(model_name, 'w') as f:
