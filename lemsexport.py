@@ -46,8 +46,8 @@ def _determine_dimension(value):
 
 def _to_lems_unit(unit):
     """
-    From given unit (and only unit without value!) it return LEMS unit or
-    raises exception if unit not supported.
+    From given unit (and only unit without value!) it returns LEMS unit
+    or raises exception if unit not supported.
     """
     strunit = unit.in_best_unit()
     strunit = strunit[3:]               # here we substract '1. '
@@ -72,6 +72,7 @@ def _determine_parameters(paramdict):
             dim = _determine_dimension(paramdict[var])
             yield lems.Parameter(var, dim)
 
+
 def _event_builder(events, event_codes):
     """
     From *events* and *event_codes* yields lems.OnCondition objects
@@ -79,14 +80,15 @@ def _event_builder(events, event_codes):
     for ev in events:
         event_out = lems.EventOut(ev)  # output (e.g. spike)
         oc = lems.OnCondition(renderer.render_expr(events[ev]))
-        oc.add_action(event_out)  
+        oc.add_action(event_out)
         event_eq = _equation_separator(event_codes[ev])
         sa = lems.StateAssignment(event_eq[0], event_eq[1])
         oc.add_action(sa)
         spike_flag = False
-        if ev==SPIKE:
+        if ev == SPIKE:
             spike_flag = True
         yield (spike_flag, oc)
+
 
 def _equation_separator(equation):
     """
