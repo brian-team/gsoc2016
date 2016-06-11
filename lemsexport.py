@@ -8,7 +8,7 @@ import neuroml
 import neuroml.writers as writers
 
 from lemsrendering import *
-from supporting import read_lems_units, read_lems_dims, brian_unit_to_lems
+from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems
 
 import pdb
 
@@ -19,8 +19,8 @@ INTEGRATING = "integrating"
 REFRACTORY = "refractory"
 
 nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
-lems_dims = read_lems_dims(nmlcdpath=nmlcdpath)
-lems_units = read_lems_units(nmlcdpath=nmlcdpath)
+nml_dims = read_nml_dims(nmlcdpath=nmlcdpath)
+nml_units = read_nml_units(nmlcdpath=nmlcdpath)
 
 renderer = LEMSRenderer()
 
@@ -37,8 +37,8 @@ def _determine_dimension(value):
     """
     From *value* with Brian2 unit determines proper LEMS dimension.
     """
-    for dim in lems_dims:
-        if value.has_same_dimensions(lems_dims[dim]):
+    for dim in nml_dims:
+        if value.has_same_dimensions(nml_dims[dim]):
             return dim
     else:
         raise AttributeError("Dimension not recognized: {}".format(str(value.dim)))
@@ -52,7 +52,7 @@ def _to_lems_unit(unit):
     strunit = unit.in_best_unit()
     strunit = strunit[3:]               # here we substract '1. '
     strunit = strunit.replace('^', '')  # in LEMS there is no ^
-    if strunit in lems_units:
+    if strunit in nml_units:
         return strunit
     else:
         # in the future we could support adding definition of new unit
@@ -125,9 +125,6 @@ def create_lems_model(network=None):
         # dynamics of the network
         dynamics = lems.Dynamics()
         ng_equations = obj.user_equations
-        # first step is to extract state and derived variables
-        #             differential equation      -> state
-        #             parameter or subexpression -> derived
         for var in ng_equations:
             if ng_equations[var].type == DIFFERENTIAL_EQUATION:
                 dim_ = _determine_dimension(ng_equations[var].unit)

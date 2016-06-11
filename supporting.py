@@ -64,7 +64,7 @@ def brian_unit_to_lems(valunit):
         valunit = str(valunit)
     return valunit.replace(' ', '*')
 
-def read_lems_dims(nmlcdpath=""):
+def read_nml_dims(nmlcdpath=""):
     """
     Read from `NeuroMLCoreDimensions.xml` all supported by LEMS
     dimensions and store it as a Python dict with name as a key
@@ -96,7 +96,7 @@ def read_lems_dims(nmlcdpath=""):
     return lems_dimensions
 
 
-def read_lems_units(nmlcdpath=""):
+def read_nml_units(nmlcdpath=""):
     """
     Read from 'NeuroMLCoreDimensions.xml' all supported by LEMS
     units.
