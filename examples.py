@@ -5,7 +5,7 @@ from lemsexport import *
 # http://brian2.readthedocs.io/en/2.0rc1/examples/IF_curve_LIF.html
 
 run_monitor = False
-refractory = False
+refractory = True
 
 n = 100
 duration = 5*second
@@ -40,7 +40,7 @@ else:
 group.v = 0*mV
 group.v0 = '20*mV * i / (n-1)'
 
-model_name = 'lifmodel{}.xml'.format("" if refractory else "ref")
+model_name = 'lifmodel{}.xml'.format("" if not refractory else "ref")
 model = create_lems_model()
 model.add(lems.Include("NeuroML2CoreTypes.xml"))
 model.add(lems.Include("Simulation.xml"))

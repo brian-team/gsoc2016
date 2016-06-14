@@ -12,14 +12,15 @@ from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems
 
 import pdb
 
-SPIKE = "spike"
-LAST_SPIKE = "lastspike"
-NOT_REFRACTORY = "not_refractory"
-INTEGRATING = "integrating"
-REFRACTORY = "refractory"
+SPIKE             = "spike"
+LAST_SPIKE        = "lastspike"
+NOT_REFRACTORY    = "not_refractory"
+INTEGRATING       = "integrating"
+REFRACTORY        = "refractory"
+UNLESS_REFRACTORY = "unless refractory"
 
 nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
-nml_dims = read_nml_dims(nmlcdpath=nmlcdpath)
+nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)
 nml_units = read_nml_units(nmlcdpath=nmlcdpath)
 
 renderer = LEMSRenderer()
@@ -147,37 +148,45 @@ def create_lems_model(network=None):
                 init_value = brian_unit_to_lems(init_value)
             onstart.add(lems.StateAssignment(var, init_value))
         dynamics.add(onstart)
-        for var in obj.user_equations.diff_eq_names:
-            td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
-            if obj._refractory:
-                # if refractoriness, we create separate regimes
-                # - for integrating
-                integr_regime = lems.Regime(INTEGRATING, dynamics, True)  # True -> initial regime
+
+        if obj._refractory:
+            # if refractoriness, we create separate regimes
+            # - for integrating
+            integr_regime = lems.Regime(INTEGRATING, dynamics, True)  # True -> initial regime
+            for spike_flag, oc in _event_builder(obj.events, obj.event_codes):
+                if spike_flag:
+                    # if spike occured we make transition to refractory regime
+                    oc.add_action(lems.Transition(REFRACTORY))
+                integr_regime.add_event_handler(oc)
+            # - for refractory
+            refrac_regime = lems.Regime(REFRACTORY, dynamics)
+            # we make lastspike variable and initialize it
+            refrac_regime.add_state_variable(lems.StateVariable(LAST_SPIKE, dimension='time'))
+            oe = lems.OnEntry()
+            oe.add(lems.StateAssignment(LAST_SPIKE, 't'))
+            refrac_regime.add(oe)
+            # after time spiecified in _refractory we make transition
+            # to integrating regime
+            ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
+            ref_trans = lems.Transition(INTEGRATING)
+            ref_oc.add_action(ref_trans)
+            refrac_regime.add_event_handler(ref_oc)
+            for var in obj.user_equations.diff_eq_names:
+                td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
+                # if unless refratory we add only do integration regime
+                if UNLESS_REFRACTORY in ng_equations[var].flags:
+                    integr_regime.add_time_derivative(td)
+                    continue
                 integr_regime.add_time_derivative(td)
-                for spike_flag, oc in _event_builder(obj.events, obj.event_codes):
-                    if spike_flag:
-                        # if spike occured we make transition to refractory regime
-                        oc.add_action(lems.Transition(REFRACTORY))
-                    integr_regime.add_event_handler(oc)
-                dynamics.add_regime(integr_regime)
-                # - for refractory
-                refrac_regime = lems.Regime(REFRACTORY, dynamics)
-                # we make lastspike variable and initialize it
-                refrac_regime.add_state_variable(lems.StateVariable(LAST_SPIKE, dimension='time'))
-                oe = lems.OnEntry()
-                oe.add(lems.StateAssignment(LAST_SPIKE, 't'))
-                refrac_regime.add(oe)
-                # after time spiecified in _refractory we make transition
-                # to integrating regime
-                ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
-                ref_trans = lems.Transition(INTEGRATING)
-                ref_oc.add_action(ref_trans)
-                refrac_regime.add_event_handler(ref_oc)
-                dynamics.add_regime(refrac_regime)
-            else:
-                # here we add events directly to dynamics
-                for spike_flag, oc in _event_builder(obj.events, obj.event_codes):
-                    dynamics.add_event_handler(oc)
+                refrac_regime.add_time_derivative(td)
+            dynamics.add_regime(integr_regime)
+            dynamics.add_regime(refrac_regime)
+        else:
+            # here we add events directly to dynamics
+            for spike_flag, oc in _event_builder(obj.events, obj.event_codes):
+                dynamics.add_event_handler(oc)
+            for var in obj.user_equations.diff_eq_names:
+                td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
                 dynamics.add_time_derivative(td)
 
         component_type.dynamics = dynamics
