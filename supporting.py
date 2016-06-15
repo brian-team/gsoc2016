@@ -119,7 +119,6 @@ def read_nml_units(nmlcdpath=""):
     for uc in unitsCollection:
         if uc.hasAttribute('symbol'):
             lems_units.append(uc.getAttribute('symbol'))
-
     return lems_units
 
 if __name__ == '__main__':

@@ -20,6 +20,8 @@ REFRACTORY        = "refractory"
 UNLESS_REFRACTORY = "unless refractory"
 
 nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
+LEMS_CONSTANTS_XML = "LEMSUnitsConstants.xml"  # path to units constants
+
 nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)
 nml_units = read_nml_units(nmlcdpath=nmlcdpath)
 
@@ -99,7 +101,7 @@ def _equation_separator(equation):
     return lhs.strip(), rhs.strip()
 
 
-def create_lems_model(network=None):
+def create_lems_model(network=None, constants_file=None):
     """
     From given *network* returns LEMS model object.
     """
@@ -110,8 +112,10 @@ def create_lems_model(network=None):
     else:
         net = network
 
-    model.add_constant(lems.Constant('mV', '0.001', 'voltage', symbol='mV'))
-    model.add_constant(lems.Constant('ms', '0.001', 'time', symbol='ms'))
+    if not constants_file:
+        model.add(lems.Include(LEMS_CONSTANTS_XML))
+    else:
+        model.add(lems.Include(constants_file))
 
     for e, obj in enumerate(net.objects):
         if not type(obj) is NeuronGroup:
