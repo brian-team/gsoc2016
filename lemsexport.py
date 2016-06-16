@@ -10,6 +10,7 @@ import neuroml.writers as writers
 from lemsrendering import *
 from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems
 
+import re
 import pdb
 
 SPIKE             = "spike"
@@ -26,6 +27,7 @@ nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)
 nml_units = read_nml_units(nmlcdpath=nmlcdpath)
 
 renderer = LEMSRenderer()
+
 
 def _find_precision(value):
     "Returns precision from a float number eg 0.003 -> 0.001"
@@ -84,9 +86,10 @@ def _event_builder(events, event_codes):
         event_out = lems.EventOut(ev)  # output (e.g. spike)
         oc = lems.OnCondition(renderer.render_expr(events[ev]))
         oc.add_action(event_out)
-        event_eq = _equation_separator(event_codes[ev])
-        sa = lems.StateAssignment(event_eq[0], event_eq[1])
-        oc.add_action(sa)
+        for ec in re.split(';|\n', event_codes[ev]):
+            event_eq = _equation_separator(ec)
+            sa = lems.StateAssignment(event_eq[0], event_eq[1])
+            oc.add_action(sa)
         spike_flag = False
         if ev == SPIKE:
             spike_flag = True
