@@ -78,6 +78,14 @@ def _determine_parameters(paramdict):
             yield lems.Parameter(var, dim)
 
 
+def _equation_separator(equation):
+    """
+    Separates *equation* (str) to LHS and RHS.
+    """
+    lhs, rhs = equation.split('=')
+    return lhs.strip(), rhs.strip()
+
+
 def _event_builder(events, event_codes):
     """
     From *events* and *event_codes* yields lems.OnCondition objects
@@ -86,22 +94,14 @@ def _event_builder(events, event_codes):
         event_out = lems.EventOut(ev)  # output (e.g. spike)
         oc = lems.OnCondition(renderer.render_expr(events[ev]))
         oc.add_action(event_out)
-        for ec in re.split(';|\n', event_codes[ev]):
-            event_eq = _equation_separator(ec)
-            sa = lems.StateAssignment(event_eq[0], event_eq[1])
-            oc.add_action(sa)
+        if ev in event_codes:
+            for ec in re.split(';|\n', event_codes[ev]):
+                event_eq = _equation_separator(ec)
+                oc.add_action(lems.StateAssignment(event_eq[0], event_eq[1]))
         spike_flag = False
         if ev == SPIKE:
             spike_flag = True
         yield (spike_flag, oc)
-
-
-def _equation_separator(equation):
-    """
-    Separates *equation* (str) to LHS and RHS.
-    """
-    lhs, rhs = equation.split('=')
-    return lhs.strip(), rhs.strip()
 
 
 def create_lems_model(network=None, constants_file=None):
