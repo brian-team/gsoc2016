@@ -3,6 +3,10 @@ from brian2.groups.neurongroup import NeuronGroup
 from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
+from brian2.core.namespace import get_local_namespace, DEFAULT_UNITS
+from brian2.devices.device import Device, all_devices
+from brian2.utils.logger import get_logger
+
 import lems.api as lems
 import neuroml
 import neuroml.writers as writers
@@ -12,6 +16,10 @@ from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems
 
 import re
 import pdb
+
+__all__ = []
+
+logger = get_logger(__name__)
 
 SPIKE             = "spike"
 LAST_SPIKE        = "lastspike"
@@ -84,7 +92,6 @@ def _equation_separator(equation):
     """
     lhs, rhs = equation.split('=')
     return lhs.strip(), rhs.strip()
-
 
 
 class NMLExporter(object):
@@ -215,12 +222,80 @@ class NMLExporter(object):
         return self._model
 
 
-def create_nml_network(include, nml_file='name.xml'):
-    nml_doc = neuroml.NeuroMLDocument()
-    nml_doc.includes.append(neuroml.Include(include))
-    network = neuroml.Network(id='net')
-    pop = neuroml.Population(id='neuropop', component='n1', size='100')
-    network.populations.append(pop)
-    nml_doc.networks.append(network)
-    writers.NeuroMLWriter.write(nml_doc, nml_file)
-    return None
+class DummyCodeObject(object):
+    def __init__(self, *args, **kwds):
+        pass
+
+    def __call__(self, **kwds):
+        pass
+
+
+class LEMSDevice(Device):
+    '''
+    The `Device` used LEMS/NeuroML2 code genration.
+    '''
+    def __init__(self):
+        super(ExampleDevice, self).__init__()
+        self.runs = []
+        self.assignments = []
+
+    # Our device will not actually calculate/store any data, so the following
+    # are just dummy implementations
+
+    def add_array(self, var):
+        pass
+
+    def init_with_zeros(self, var, dtype):
+        pass
+
+    def fill_with_array(self, var, arr):
+        pass
+
+    def init_with_arange(self, var, start, dtype):
+        pass
+
+    def get_value(self, var, access_data=True):
+        return np.zeros(var.size, dtype=var.dtype)
+
+    def resize(self, var, new_size):
+        pass
+
+    def code_object(self, *args, **kwds):
+        return DummyCodeObject(*args, **kwds)
+
+    def network_run(self, network, duration, report=None, report_period=10*second,
+                    namespace=None, profile=True, level=0):
+        network._clocks = {obj.clock for obj in network.objects}
+        # Get the local namespace
+        if namespace is None:
+            namespace = get_local_namespace(level=level+2)
+        network.before_run(namespace)
+
+        # Extract all the objects present in the network
+        descriptions = []
+        merged_namespace = {}
+        for obj in network.objects:
+            one_description, one_namespace = description(obj, namespace)
+            descriptions.append((obj.name, one_description))
+            for key, value in one_namespace.iteritems():
+                if key in merged_namespace and value != merged_namespace[key]:
+                    raise ValueError('name "%s" is used inconsistently')
+                merged_namespace[key] = value
+
+        assignments = list(self.assignments)
+        self.assignments[:] = []
+        self.runs.append((descriptions, duration, merged_namespace, assignments))
+
+    def variableview_set_with_expression_conditional(self, variableview, cond, code,
+                                                     run_namespace, check_units=True):
+        self.assignments.append(('conditional', variableview.group.name, variableview.name, cond, code))
+
+    def variableview_set_with_expression(self, variableview, item, code, run_namespace, check_units=True):
+        self.assignments.append(('item', variableview.group.name, variableview.name, item, code))
+
+    def variableview_set_with_index_array(self, variableview, item, value, check_units):
+        self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
+
+    def build(self):
+        pass
+
