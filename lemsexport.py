@@ -54,7 +54,8 @@ def _determine_dimension(value):
         if value.has_same_dimensions(nml_dims[dim]):
             return dim
     else:
-        raise AttributeError("Dimension not recognized: {}".format(str(value.dim)))
+        print "Warning: " + str(value) + " not regonized"
+        #raise AttributeError("Dimension not recognized: {}".format(str(value.dim)))
 
 
 def _to_lems_unit(unit):
@@ -90,7 +91,10 @@ def _equation_separator(equation):
     """
     Separates *equation* (str) to LHS and RHS.
     """
-    lhs, rhs = equation.split('=')
+    try:
+        lhs, rhs = re.split('<=|>=|==|=|>|<', equation)
+    except ValueError:
+        return None
     return lhs.strip(), rhs.strip()
 
 
@@ -165,6 +169,8 @@ class NMLExporter(object):
             for var in obj.equations.names:
                 if var in (NOT_REFRACTORY, LAST_SPIKE):
                     continue
+                if not var in obj.namespace['init']:
+                    continue
                 init_value = obj.namespace['init'][var]  # initializers will be removed in the future
                 if type(init_value) != str:
                     init_value = brian_unit_to_lems(init_value)
@@ -189,7 +195,12 @@ class NMLExporter(object):
                 refrac_regime.add(oe)
                 # after time spiecified in _refractory we make transition
                 # to integrating regime
-                ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
+                if not _equation_separator(obj._refractory):
+                    # if there is no specific variable given, we assume
+                    # that this is time condition
+                    ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
+                else:
+                    ref_oc = lems.OnCondition(obj._refractory)
                 ref_trans = lems.Transition(INTEGRATING)
                 ref_oc.add_action(ref_trans)
                 refrac_regime.add_event_handler(ref_oc)
