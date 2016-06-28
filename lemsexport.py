@@ -6,13 +6,15 @@ from brian2.core.network import *
 from brian2.core.namespace import get_local_namespace, DEFAULT_UNITS
 from brian2.devices.device import Device, all_devices
 from brian2.utils.logger import get_logger
+from brian2.units.fundamentalunits import _siprefixes
 
 import lems.api as lems
 import neuroml
 import neuroml.writers as writers
 
 from lemsrendering import *
-from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems
+from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
+                       name_to_unit
 
 import re
 import pdb
@@ -54,24 +56,24 @@ def _determine_dimension(value):
         if value.has_same_dimensions(nml_dims[dim]):
             return dim
     else:
-        print "Warning: " + str(value) + " not regonized"
-        #raise AttributeError("Dimension not recognized: {}".format(str(value.dim)))
+        if value==1:
+            # dimensionless
+            return "none"
+        else:
+            raise AttributeError("Dimension not recognized: {}".format(str(value.dim)))
 
 
 def _to_lems_unit(unit):
     """
     From given unit (and only unit without value!) it returns LEMS unit
-    or raises exception if unit not supported.
     """
-    strunit = unit.in_best_unit()
-    strunit = strunit[3:]               # here we substract '1. '
-    strunit = strunit.replace('^', '')  # in LEMS there is no ^
-    if strunit in nml_units:
-        return strunit
+    if type(unit) == str:
+        strunit = unit
     else:
-        # in the future we could support adding definition of new unit
-        # in that case
-        raise AttributeError("Unit not recognized: {}".format(str(strunit)))
+        strunit = unit.in_best_unit()
+        strunit = strunit[3:]               # here we substract '1. '
+    strunit = strunit.replace('^', '')  # in LEMS there is no ^
+    return strunit
 
 
 def _determine_parameters(paramdict):
@@ -98,12 +100,38 @@ def _equation_separator(equation):
     return lhs.strip(), rhs.strip()
 
 
+def make_lems_unit(newunit):
+    """
+    Returns from *newunit* to a lems.Unit definition.
+    """
+    strunit = _to_lems_unit(newunit)
+    power = int(np.log10((mmetre**2).base))
+    dimension = _determine_dimension(newunit)
+    return lems.Unit(strunit, symbol=strunit, dimension=dimension, power=power)
+
+
 class NMLExporter(object):
     """
     Exporter from Brian2 code to NeuroML.
     """
     def __init__(self):
         self._model = lems.Model()
+
+    def _unit_lems_validator(self, value_in_unit):
+        """
+        Checks if *unit* is in NML supported units and if it is not
+        it adds a new definition to model. Eventually returns value
+        with unit in string.
+        """
+        if is_dimensionless(value_in_unit):
+            return str(value_in_unit)
+        value, unit = value_in_unit.in_best_unit().split(' ')
+        lemsunit = _to_lems_unit(unit)
+        if lemsunit in nml_units:
+            return "{} {}".format(value, lemsunit)
+        else:
+            self._model.add(make_lems_unit(name_to_unit[unit]))
+            return "{} {}".format(value, lemsunit)
 
     def _event_builder(self, events, event_codes):
         """
@@ -195,12 +223,12 @@ class NMLExporter(object):
                 refrac_regime.add(oe)
                 # after time spiecified in _refractory we make transition
                 # to integrating regime
-                if not _equation_separator(obj._refractory):
+                if not _equation_separator(str(obj._refractory)):
                     # if there is no specific variable given, we assume
                     # that this is time condition
                     ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
                 else:
-                    ref_oc = lems.OnCondition(obj._refractory)
+                    ref_oc = lems.OnCondition(renderer.render_expr(obj._refractory))
                 ref_trans = lems.Transition(INTEGRATING)
                 ref_oc.add_action(ref_trans)
                 refrac_regime.add_event_handler(ref_oc)
@@ -223,10 +251,14 @@ class NMLExporter(object):
                     dynamics.add_time_derivative(td)
 
             self._component_type.dynamics = dynamics
-            # adding component to the model
+            # making componenttype is done so we add it to the model
             self._model.add_component_type(self._component_type)
-            obj.namespace.pop("init", None)                # filter out init
-            self._model.add(lems.Component("n{}".format(e+1), ct_name, **obj.namespace))
+            obj.namespace.pop("init", None)                # kick out init
+            # adding component to the model
+            paramdict = dict()
+            for param in obj.namespace:
+                paramdict[param] = self._unit_lems_validator(obj.namespace[param])
+            self._model.add(lems.Component("n{}".format(e+1), ct_name, **paramdict))
 
     @property
     def model(self):
