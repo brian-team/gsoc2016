@@ -15,6 +15,7 @@ import neuroml.writers as writers
 from lemsrendering import *
 from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
                        name_to_unit
+from cgmhelper import *
 
 import re
 import pdb
@@ -81,7 +82,6 @@ def _determine_parameters(paramdict):
     Iterator giving `lems.Parameter` for every parameter from *paramdict*.
     """
     for var in paramdict:
-        if var == 'init': continue              # initializers (to remove)
         if is_dimensionless(paramdict[var]):
             yield lems.Parameter(var, "none")
         else:
@@ -153,11 +153,11 @@ class NMLExporter(object):
                 spike_flag = True
             yield (spike_flag, oc)
 
-    def create_lems_model(self, network=None, constants_file=None):
+    def create_lems_model(self, network=None, initializers={}, constants_file=None):
         """
         From given *network* returns LEMS model object.
         """
-        if type(network) is not Network:
+        if network is None:
             net = Network(collect(level=1))
         else:
             net = network
@@ -197,9 +197,9 @@ class NMLExporter(object):
             for var in obj.equations.names:
                 if var in (NOT_REFRACTORY, LAST_SPIKE):
                     continue
-                if not var in obj.namespace['init']:
+                if not var in initializers:
                     continue
-                init_value = obj.namespace['init'][var]  # initializers will be removed in the future
+                init_value = initializers[var]  # initializers will be removed in the future
                 if type(init_value) != str:
                     init_value = brian_unit_to_lems(init_value)
                 onstart.add(lems.StateAssignment(var, init_value))
@@ -278,7 +278,7 @@ class LEMSDevice(Device):
     The `Device` used LEMS/NeuroML2 code genration.
     '''
     def __init__(self):
-        super(ExampleDevice, self).__init__()
+        super(LEMSDevice, self).__init__()
         self.runs = []
         self.assignments = []
 
@@ -317,6 +317,7 @@ class LEMSDevice(Device):
         # Extract all the objects present in the network
         descriptions = []
         merged_namespace = {}
+        self.network = network  
         for obj in network.objects:
             one_description, one_namespace = description(obj, namespace)
             descriptions.append((obj.name, one_description))
@@ -340,5 +341,26 @@ class LEMSDevice(Device):
         self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
 
     def build(self):
-        pass
+        print self.network.objects 
+        print len(self.runs[1])
+        initializers = {}
+        for descriptions, duration, namespace, assignments in self.runs:
+            print '*'*8
+            print descriptions
+            print duration
+            print namespace
+            print assignments
+            for a in assignments:
+                if not a[2] in initializers:
+                    initializers[a[2]] = a[-1]
+        print 'x '*8
+        print initializers
+        print type(self.network.objects[0])
+        exporter = NMLExporter()
+        exporter.create_lems_model(self.network)
+        model = exporter.model
+        model.export_to_file("xxx.xml")
 
+
+lems_device = LEMSDevice()
+all_devices['lemsdevice'] = lems_device
