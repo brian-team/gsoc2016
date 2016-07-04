@@ -172,6 +172,8 @@ class NMLExporter(object):
                 continue
             if hasattr(obj, "namespace") and not obj.namespace:
                 obj.namespace = namespace
+            if not "n" in obj.namespace:
+                obj.namespace["N"] = obj.N
             ct_name = "neuron{}".format(e+1)
             self._component_type = lems.ComponentType(ct_name)
             # adding parameters
@@ -267,6 +269,12 @@ class NMLExporter(object):
         return self._model
 
 
+########################################################################
+# Code Generation Mechanism
+########################################################################
+
+INCLUDES = ["Simulation.xml", "NeuroML2CoreTypes.xml"]
+
 class DummyCodeObject(object):
     def __init__(self, *args, **kwds):
         pass
@@ -284,7 +292,7 @@ class LEMSDevice(Device):
         self.runs = []
         self.assignments = []
 
-    # Our device will not actually calculate/store any data, so the following
+    # This device does not actually calculate/store any data, so the following
     # are just dummy implementations
 
     def add_array(self, var):
@@ -352,6 +360,8 @@ class LEMSDevice(Device):
         exporter.create_lems_model(self.network, namespace=namespace,
                                                  initializers=initializers)
         model = exporter.model
+        for file_incl in INCLUDES:
+            model.add(lems.Include(file_incl))
         model.export_to_file(filename)
 
 
