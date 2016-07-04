@@ -153,7 +153,7 @@ class NMLExporter(object):
                 spike_flag = True
             yield (spike_flag, oc)
 
-    def create_lems_model(self, network=None, initializers={}, constants_file=None):
+    def create_lems_model(self, network=None, namespace={}, initializers={}, constants_file=None):
         """
         From given *network* returns LEMS model object.
         """
@@ -170,6 +170,8 @@ class NMLExporter(object):
         for e, obj in enumerate(net.objects):
             if not type(obj) is NeuronGroup:
                 continue
+            if hasattr(obj, "namespace") and not obj.namespace:
+                obj.namespace = namespace
             ct_name = "neuron{}".format(e+1)
             self._component_type = lems.ComponentType(ct_name)
             # adding parameters
@@ -317,7 +319,7 @@ class LEMSDevice(Device):
         # Extract all the objects present in the network
         descriptions = []
         merged_namespace = {}
-        self.network = network  
+        self.network = network
         for obj in network.objects:
             one_description, one_namespace = description(obj, namespace)
             descriptions.append((obj.name, one_description))
@@ -340,26 +342,17 @@ class LEMSDevice(Device):
     def variableview_set_with_index_array(self, variableview, item, value, check_units):
         self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
 
-    def build(self):
-        print self.network.objects 
-        print len(self.runs[1])
+    def build(self, filename):
         initializers = {}
         for descriptions, duration, namespace, assignments in self.runs:
-            print '*'*8
-            print descriptions
-            print duration
-            print namespace
-            print assignments
-            for a in assignments:
-                if not a[2] in initializers:
-                    initializers[a[2]] = a[-1]
-        print 'x '*8
-        print initializers
-        print type(self.network.objects[0])
+            for assignment in assignments:
+                if not assignment[2] in initializers:
+                    initializers[assignment[2]] = assignment[-1]
         exporter = NMLExporter()
-        exporter.create_lems_model(self.network)
+        exporter.create_lems_model(self.network, namespace=namespace,
+                                                 initializers=initializers)
         model = exporter.model
-        model.export_to_file("xxx.xml")
+        model.export_to_file(filename)
 
 
 lems_device = LEMSDevice()

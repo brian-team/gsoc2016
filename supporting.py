@@ -121,6 +121,7 @@ def read_nml_units(nmlcdpath=""):
             lems_units.append(uc.getAttribute('symbol'))
     return lems_units
 
+
 if __name__ == '__main__':
     # test units parser
     from brian2 import *

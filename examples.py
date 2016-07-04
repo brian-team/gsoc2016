@@ -30,11 +30,10 @@ initializers = {'v': 0*mV,
 
 namespace = {'n':n,
              'tau':tau,
-             'init': initializers
             }
 if refractory:
     group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
-                         refractory=15*ms, method='linear', namespace=namespace, events={'custom_event': 'x > x_th'})
+                         refractory=15*ms, method='linear', namespace=namespace)
 else:
     group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
                          method='linear', namespace=namespace)
@@ -45,7 +44,7 @@ group.v0 = '20*mV * i / (n-1)'
 model_name = 'lifmodel{}.xml'.format("" if not refractory else "ref")
 
 exporter = NMLExporter()
-exporter.create_lems_model()
+exporter.create_lems_model(initializers=initializers)
 model = exporter.model
 model.add(lems.Include("NeuroML2CoreTypes.xml"))
 model.add(lems.Include("Simulation.xml"))
