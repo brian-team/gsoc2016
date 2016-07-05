@@ -31,7 +31,7 @@ INTEGRATING       = "integrating"
 REFRACTORY        = "refractory"
 UNLESS_REFRACTORY = "unless refractory"
 
-nmlcdpath = ""  # path to NeuroMLCoreDimensions.xml file
+nmlcdpath = "brian2lems/"  # path to NeuroMLCoreDimensions.xml file
 LEMS_CONSTANTS_XML = "LEMSUnitsConstants.xml"  # path to units constants
 
 nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)

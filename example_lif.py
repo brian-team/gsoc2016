@@ -1,7 +1,7 @@
 from brian2 import *
 import lems.api as lems
-from lemsexport import *
-from lemsexport import NMLExporter
+from brian2lems.lemsexport import *
+from brian2lems.lemsexport import NMLExporter
 
 # LIF
 # http://brian2.readthedocs.io/en/2.0rc1/examples/IF_curve_LIF.html
