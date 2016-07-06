@@ -248,7 +248,7 @@ class NMLExporter(object):
                 dynamics.add_regime(refrac_regime)
             else:
                 # here we add events directly to dynamics
-                for spike_flag, oc in _event_builder(obj.events, obj.event_codes):
+                for spike_flag, oc in self._event_builder(obj.events, obj.event_codes):
                     dynamics.add_event_handler(oc)
                 for var in obj.user_equations.diff_eq_names:
                     td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
