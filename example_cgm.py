@@ -1,5 +1,5 @@
 from brian2 import *
-from lemsexport import all_devices
+from brian2lems.lemsexport import all_devices
 
 set_device('lemsdevice')
 
