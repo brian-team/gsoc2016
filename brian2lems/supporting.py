@@ -122,50 +122,65 @@ def read_nml_units(nmlcdpath=""):
             lems_units.append(uc.getAttribute('symbol'))
     return lems_units
 
+
 class NeuroMLSimulation(object):
-    
+
     def __init__(self, simid, target, length="1s", step="0.1ms"):
         self.doc = minidom.Document()
         self.create_simulation(simid, target, length, step)
-        self.lines = []
+        self.lines = {}
+        self.displays = {}
+        self._disp_idx = -1
 
     def create_simulation(self, simid, target, length, step):
+        """
+        Adds a Simulation element to DOM structure at init.
+        """
         self.simulation = self.doc.createElement('Simulation')
         attributes = [("id", simid), ("target", target),
                       ("length", length), ("step", step)]
         for attr_name, attr_value in attributes:
             self.simulation.setAttribute(attr_name, attr_value)
-        
 
     def add_display(self, dispid, title="", time_scale="1ms", xmin="0",
                                   xmax="1000", ymin="0", ymax="11"):
-        self.display = self.doc.createElement('Display')
+        """
+        Adds a Display element to Simulation.
+        """
+        self._disp_idx += 1
+        self.displays[self._disp_idx] = self.doc.createElement('Display')
+        self.lines[self._disp_idx] = []
         attributes = [("id", dispid), ("title", title),
                       ("timeScale", time_scale), ("xmin", xmin),
                       ("xmax", xmax), ("ymin", ymin), ("ymax", ymax)]
         for attr_name, attr_value in attributes:
-            self.display.setAttribute(attr_name, attr_value)
+            self.displays[self._disp_idx].setAttribute(attr_name, attr_value)
 
     def add_line(self, linid, quantity, scale="1mV", time_scale="1ms"):
-        assert hasattr(self, 'display'), "You need to add display first"
+        """
+        Adds a Line element to a recently added Display.
+        """
+        assert self.displays, "You need to add display first"
         line = self.doc.createElement('Line')
         attributes = [("id", linid), ("quantity", quantity),
                       ("scale", scale), ("timeScale", time_scale)]
         for attr_name, attr_value in attributes:
             line.setAttribute(attr_name, attr_value)
-        self.lines.append(line)
+        self.lines[self._disp_idx].append(line)
 
     def build(self):
         """
-        Build NeuroML DOM structure of Simulation.
+        Builds NeuroML DOM structure of Simulation.
         """
-        for line in self.lines:
-            self.display.appendChild(line)
-        self.simulation.appendChild(self.display)
+        for k in self.displays:
+            for line in self.lines[k]:
+                self.displays[k].appendChild(line)
+            self.simulation.appendChild(self.displays[k])
         return self.simulation
 
     def __repr__(self):
         return self.simulation.toprettyxml('  ', '\n')
+
 
 if __name__ == '__main__':
     # test units parser
