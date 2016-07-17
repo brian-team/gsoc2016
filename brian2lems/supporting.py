@@ -131,6 +131,9 @@ class NeuroMLSimulation(object):
         self.lines = {}
         self.displays = {}
         self._disp_idx = -1
+        self.outcolumns = {}
+        self.output_files = {}
+        self._output_idx = -1
 
     def create_simulation(self, simid, target, length, step):
         """
@@ -168,6 +171,28 @@ class NeuroMLSimulation(object):
             line.setAttribute(attr_name, attr_value)
         self.lines[self._disp_idx].append(line)
 
+    def add_outputfile(self, outfileid, filename="recordings.dat"):
+        """
+        Adds an OutputFile element to a recently added Display.
+        """
+        self._output_idx += 1
+        self.output_files[self._output_idx] = self.doc.createElement('OutputFile')
+        self.lines[self._disp_idx] = []
+        attributes = [("id", outfileid), ("filename", filename)]
+        for attr_name, attr_value in attributes:
+            self.output_files[self._output_idx].setAttribute(attr_name, attr_value)
+
+    def add_outputcolumn(self, ocid, quantity):
+        """
+        Adds an OutputColumn element to a recently added Display.
+        """
+        assert self.displays, "You need to add display first"
+        outputcolumn = self.doc.createElement('OutputColumn')
+        attributes = [("id", ocid), ("quantity", quantity)]
+        for attr_name, attr_value in attributes:
+            outputcolumn.setAttribute(attr_name, attr_value)
+        self.outcolumns[self._output_idx].append(outputcolumn)
+
     def build(self):
         """
         Builds NeuroML DOM structure of Simulation.
@@ -176,6 +201,10 @@ class NeuroMLSimulation(object):
             for line in self.lines[k]:
                 self.displays[k].appendChild(line)
             self.simulation.appendChild(self.displays[k])
+        for k in self.output_files:
+            for outcol in self.outcolumns[k]:
+                self.output_files[k].appendChild(outcol)
+            self.simulation.appendChild(self.output_files[k])
         return self.simulation
 
     def __repr__(self):

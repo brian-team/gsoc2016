@@ -3,7 +3,7 @@ import numpy as np
 from brian2.core.namespace import get_local_namespace, DEFAULT_UNITS
 from brian2.core.variables import Constant
 from brian2.equations.equations import DIFFERENTIAL_EQUATION, SUBEXPRESSION, \
-    PARAMETER
+                                       PARAMETER
 from brian2.groups.neurongroup import NeuronGroup
 from brian2.monitors.spikemonitor import SpikeMonitor
 from brian2.devices.device import Device, all_devices
