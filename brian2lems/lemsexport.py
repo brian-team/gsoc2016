@@ -1,5 +1,6 @@
 from brian2 import *
-from brian2.groups.neurongroup import NeuronGroup
+from brian2.groups.neurongroup import NeuronGroup, Thresholder, Resetter,\
+                                      StateUpdater
 from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
@@ -7,6 +8,7 @@ from brian2.core.namespace import get_local_namespace, DEFAULT_UNITS
 from brian2.devices.device import Device, all_devices
 from brian2.utils.logger import get_logger
 from brian2.units.fundamentalunits import _siprefixes
+from brian2.utils.stringtools import get_identifiers
 
 import lems.api as lems
 import neuroml
@@ -14,9 +16,10 @@ import neuroml.writers as writers
 
 from lemsrendering import *
 from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
-                       name_to_unit
+                       name_to_unit, NeuroMLSimulation
 from cgmhelper import *
 
+import warnings
 import re
 import pdb
 
@@ -76,19 +79,6 @@ def _to_lems_unit(unit):
     strunit = strunit.replace('^', '')  # in LEMS there is no ^
     return strunit
 
-
-def _determine_parameters(paramdict):
-    """
-    Iterator giving `lems.Parameter` for every parameter from *paramdict*.
-    """
-    for var in paramdict:
-        if is_dimensionless(paramdict[var]):
-            yield lems.Parameter(var, "none")
-        else:
-            dim = _determine_dimension(paramdict[var])
-            yield lems.Parameter(var, dim)
-
-
 def _equation_separator(equation):
     """
     Separates *equation* (str) to LHS and RHS.
@@ -116,6 +106,33 @@ class NMLExporter(object):
     """
     def __init__(self):
         self._model = lems.Model()
+        self._all_params_unit = {}
+
+    def _determine_parameters(self, paramdict):
+        """
+        Iterator giving `lems.Parameter` for every parameter from *paramdict*.
+        """
+        for var in paramdict:
+            if is_dimensionless(paramdict[var]):
+                self._all_params_unit[var] = "none"
+                yield lems.Parameter(var, "none")
+            else:
+                dim = _determine_dimension(paramdict[var])
+                self._all_params_unit[var] = dim
+                yield lems.Parameter(var, dim)
+
+    def _determine_properties(self, paramdict):
+        """
+        Iterator giving `lems.Property` for every parameter from *paramdict*.
+        """
+        for var in paramdict:
+            if is_dimensionless(paramdict[var]):
+                self._all_params_unit[var] = "none"
+                yield lems.Property(var, "none")
+            else:
+                dim = _determine_dimension(paramdict[var])
+                self._all_params_unit[var] = dim
+                yield lems.Property(var, dim)
 
     def _unit_lems_validator(self, value_in_unit):
         """
@@ -152,8 +169,188 @@ class NMLExporter(object):
             if ev == SPIKE:
                 spike_flag = True
             yield (spike_flag, oc)
+    
+    def add_neurongroup(self, obj, idx_of_ng, namespace, initializers):
+        """
+        Adds NeuronGroup object *obj* to self._model.
+        *obj* -- NeuronGroup object
+        """
+        
+        if hasattr(obj, "namespace") and not obj.namespace:
+            obj.namespace = namespace
+        if not "n" in obj.namespace:
+            obj.namespace["N"] = obj.N
+        ct_name = "neuron{}".format(idx_of_ng+1)
+        self._component_type = lems.ComponentType(ct_name)
+        # adding parameters
+        special_properties = {}
+        for key in obj.namespace.keys():
+            special_properties[key] = None
+        for param in self._determine_properties(obj.namespace):
+            self._component_type.add(param)
+        # common things for every neuron definition
+        self._component_type.add(lems.EventPort(name='spike', direction='out'))
+        # dynamics of the network
+        dynamics = lems.Dynamics()
+        ng_equations = obj.user_equations
+        for var in ng_equations:
+            if ng_equations[var].type == DIFFERENTIAL_EQUATION:
+                dim_ = _determine_dimension(ng_equations[var].unit)
+                sv_ = lems.StateVariable(var, dimension=dim_, exposure=var)
+                self._all_params_unit[var] = dim_
+                dynamics.add_state_variable(sv_)
+                self._component_type.add(lems.Exposure(var, dimension=dim_))
+            elif ng_equations[var].type in (PARAMETER, SUBEXPRESSION):
+                if var == NOT_REFRACTORY:
+                    continue
+                dim_ = _determine_dimension(ng_equations[var].unit)
+                self._all_params_unit[var] = dim_
+                # all initializers contatining iterator need to be assigned
+                # as a property
+                # i is default iterator in Brian2
+                if var in initializers and "i" in get_identifiers(str(initializers[var])):
+                    self._component_type.add(lems.Property(var, dim_))
+                    special_properties[var] = initializers[var]
+                    continue
+                sv_ = lems.StateVariable(var, dimension=dim_)
+                dynamics.add_state_variable(sv_)
+        # what happens at initialization
+        onstart = lems.OnStart()
+        for var in obj.equations.names:
+            if var in (NOT_REFRACTORY, LAST_SPIKE):
+                continue
+            if not var in initializers:
+                continue
+            if var in special_properties:
+                continue
+            init_value = initializers[var]
+            if type(init_value) != str:
+                init_value = brian_unit_to_lems(init_value)
+            onstart.add(lems.StateAssignment(var, init_value))
+        dynamics.add(onstart)
 
-    def create_lems_model(self, network=None, namespace={}, initializers={}, constants_file=None):
+        if obj._refractory:
+            # if refractoriness, we create separate regimes
+            # - for integrating
+            integr_regime = lems.Regime(INTEGRATING, dynamics, True)  # True -> initial regime
+            for spike_flag, oc in self._event_builder(obj.events, obj.event_codes):
+                if spike_flag:
+                    # if spike occured we make transition to refractory regime
+                    oc.add_action(lems.Transition(REFRACTORY))
+                integr_regime.add_event_handler(oc)
+            # - for refractory
+            refrac_regime = lems.Regime(REFRACTORY, dynamics)
+            # we make lastspike variable and initialize it
+            refrac_regime.add_state_variable(lems.StateVariable(LAST_SPIKE, dimension='time'))
+            oe = lems.OnEntry()
+            oe.add(lems.StateAssignment(LAST_SPIKE, 't'))
+            refrac_regime.add(oe)
+            # after time spiecified in _refractory we make transition
+            # to integrating regime
+            if not _equation_separator(str(obj._refractory)):
+                # if there is no specific variable given, we assume
+                # that this is time condition
+                ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
+            else:
+                ref_oc = lems.OnCondition(renderer.render_expr(obj._refractory))
+            ref_trans = lems.Transition(INTEGRATING)
+            ref_oc.add_action(ref_trans)
+            refrac_regime.add_event_handler(ref_oc)
+            for var in obj.user_equations.diff_eq_names:
+                td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
+                # if unless refratory we add only do integration regime
+                if UNLESS_REFRACTORY in ng_equations[var].flags:
+                    integr_regime.add_time_derivative(td)
+                    continue
+                integr_regime.add_time_derivative(td)
+                refrac_regime.add_time_derivative(td)
+            dynamics.add_regime(integr_regime)
+            dynamics.add_regime(refrac_regime)
+        else:
+            # here we add events directly to dynamics
+            for spike_flag, oc in self._event_builder(obj.events, obj.event_codes):
+                dynamics.add_event_handler(oc)
+            for var in obj.user_equations.diff_eq_names:
+                td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
+                dynamics.add_time_derivative(td)
+
+        self._component_type.dynamics = dynamics
+        # making componenttype is done so we add it to the model
+        self._model.add_component_type(self._component_type)
+        obj.namespace.pop("init", None)                # kick out init
+        # adding component to the model
+        paramdict = dict()
+        for param in obj.namespace:
+            paramdict[param] = self._unit_lems_validator(obj.namespace[param])
+        if obj.N == 1:
+            self._model.add(lems.Component("n{}".format(idx_of_ng), ct_name, **paramdict))
+        else:
+            self.make_multiinstantiate(special_properties, ct_name, paramdict)
+
+    def make_multiinstantiate(self, special_properties, name, parameters):
+        """
+        Adds ComponentType with MultiInstantiate in order to make
+        a network of neurons.
+        """
+        multi_ct = lems.ComponentType(name+"network")
+        structure = lems.Structure()
+        multi_ins = lems.MultiInstantiate(component=name, number="n")  # ???
+        param_dict = {}
+        for sp in special_properties:
+            if special_properties[sp] is None:
+                multi_ct.add(lems.Parameter(name=sp+"_p", dimension=self._all_params_unit[sp]))
+                multi_ins.add(lems.Assign(property=sp, value=sp+"_p"))
+                param_dict[sp] = parameters[sp]
+            else:
+                multi_ct.add(lems.Parameter(name=sp, dimension=self._all_params_unit[sp]))
+                # check if there are some units in equations
+                equation = special_properties[sp]
+                for i in get_identifiers(equation):
+                    if i in name_to_unit:
+                        const_i = i+'const'
+                        multi_ct.add(lems.Constant(name=const_i, symbol=const_i,
+                                     dimension=self._all_params_unit[sp], value="1"+i))
+                        equation = re.sub(i, const_i, equation)
+                multi_ins.add(lems.Assign(property=sp, value=equation))
+        structure.add(multi_ins)
+        multi_ct.structure = structure
+        self._model.add(multi_ct)
+        param_dict = dict([(k+"_p", v) for k, v in param_dict.items()])
+        self._model.add(lems.Component(name+"network", name+"network", **param_dict))
+
+    def add_statemonitor(self, obj):
+        """
+        From StateMonitor object extracts indices to recording in LEMS 
+        simulation and makes a display.
+        *obj* -- StateMonitor object
+        """
+        indices = obj.record
+        variables = obj.needed_variables
+        nmlsim = NeuroMLSimulation("sim", name+"network") # length, step ???
+        for e, var in enumerate(variables):
+            nmlsim.add_display("disp{}".format(e), str(var)) # max, min etc ???
+            for i in indices:
+                nmlsim.add_line("line{}".format(i), "[{}]/v".format(i)) #scale, time_scale
+        simulation = nmlsim.build()
+        self._dommodel.childNodes[0].appendChild(simulation)
+
+    def add_spikemonitor(self, obj):
+        """
+        From SpikeMonitor object extracts indices to recording in LEMS 
+        simulation and makes a display.
+        *obj* -- SpikeMonitor object
+        """
+        pass
+
+    def add_include(self, includefile):
+        """
+        Adds file to include *includefile* to model.
+        *includefile* -- str
+        """
+        self._model.add(lems.Include(includefile))
+
+    def create_lems_model(self, network=None, namespace={}, initializers={},
+                                           constants_file=None, includes=[]):
         """
         From given *network* returns LEMS model object.
         """
@@ -166,103 +363,31 @@ class NMLExporter(object):
             self._model.add(lems.Include(LEMS_CONSTANTS_XML))
         else:
             self._model.add(lems.Include(constants_file))
+        for incl in includes:
+            self.add_include(incl)
+        neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
+        state_monitors = [o for o in net.objects if type(o) is StateMonitor]
+        spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
+        # Thresholder, Resetter, StateUpdater are not interesting from our perspective
+        for e, obj in enumerate(neuron_groups):
+            self.add_neurongroup(obj, e, namespace, initializers)
+        self._dommodel = self._model.export_to_dom()
+        for e, obj in enumerate(state_monitors):
+            self.add_statemonitor(obj)
+        for e, obj in enumerate(spike_monitors):
+            self.add_spikemonitor(obj)
+        #message = "{} currently not supported ".format(str(type(obj)))
+        #warnings.warn(message)
 
-        for e, obj in enumerate(net.objects):
-            if not type(obj) is NeuronGroup:
-                continue
-            if hasattr(obj, "namespace") and not obj.namespace:
-                obj.namespace = namespace
-            if not "n" in obj.namespace:
-                obj.namespace["N"] = obj.N
-            ct_name = "neuron{}".format(e+1)
-            self._component_type = lems.ComponentType(ct_name)
-            # adding parameters
-            for param in _determine_parameters(obj.namespace):  # in the future we'd like to get rid of namespace
-                self._component_type.add(param)
-            # common things for every neuron definition
-            self._component_type.add(lems.EventPort(name='spike', direction='out'))
-            # dynamics of the network
-            dynamics = lems.Dynamics()
-            ng_equations = obj.user_equations
-            for var in ng_equations:
-                if ng_equations[var].type == DIFFERENTIAL_EQUATION:
-                    dim_ = _determine_dimension(ng_equations[var].unit)
-                    sv_ = lems.StateVariable(var, dimension=dim_, exposure=var)
-                    dynamics.add_state_variable(sv_)
-                    self._component_type.add(lems.Exposure(var, dimension=dim_))
-                elif ng_equations[var].type in (PARAMETER, SUBEXPRESSION):
-                    if var == NOT_REFRACTORY:
-                        continue
-                    dim_ = _determine_dimension(ng_equations[var].unit)
-                    sv_ = lems.StateVariable(var, dimension=dim_)
-                    dynamics.add_state_variable(sv_)
-            # what happens at initialization
-            onstart = lems.OnStart()
-            for var in obj.equations.names:
-                if var in (NOT_REFRACTORY, LAST_SPIKE):
-                    continue
-                if not var in initializers:
-                    continue
-                init_value = initializers[var]  # initializers will be removed in the future
-                if type(init_value) != str:
-                    init_value = brian_unit_to_lems(init_value)
-                onstart.add(lems.StateAssignment(var, init_value))
-            dynamics.add(onstart)
-
-            if obj._refractory:
-                # if refractoriness, we create separate regimes
-                # - for integrating
-                integr_regime = lems.Regime(INTEGRATING, dynamics, True)  # True -> initial regime
-                for spike_flag, oc in self._event_builder(obj.events, obj.event_codes):
-                    if spike_flag:
-                        # if spike occured we make transition to refractory regime
-                        oc.add_action(lems.Transition(REFRACTORY))
-                    integr_regime.add_event_handler(oc)
-                # - for refractory
-                refrac_regime = lems.Regime(REFRACTORY, dynamics)
-                # we make lastspike variable and initialize it
-                refrac_regime.add_state_variable(lems.StateVariable(LAST_SPIKE, dimension='time'))
-                oe = lems.OnEntry()
-                oe.add(lems.StateAssignment(LAST_SPIKE, 't'))
-                refrac_regime.add(oe)
-                # after time spiecified in _refractory we make transition
-                # to integrating regime
-                if not _equation_separator(str(obj._refractory)):
-                    # if there is no specific variable given, we assume
-                    # that this is time condition
-                    ref_oc = lems.OnCondition('t .gt. ( {0} + {1} )'.format(LAST_SPIKE, brian_unit_to_lems(obj._refractory)))
-                else:
-                    ref_oc = lems.OnCondition(renderer.render_expr(obj._refractory))
-                ref_trans = lems.Transition(INTEGRATING)
-                ref_oc.add_action(ref_trans)
-                refrac_regime.add_event_handler(ref_oc)
-                for var in obj.user_equations.diff_eq_names:
-                    td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
-                    # if unless refratory we add only do integration regime
-                    if UNLESS_REFRACTORY in ng_equations[var].flags:
-                        integr_regime.add_time_derivative(td)
-                        continue
-                    integr_regime.add_time_derivative(td)
-                    refrac_regime.add_time_derivative(td)
-                dynamics.add_regime(integr_regime)
-                dynamics.add_regime(refrac_regime)
-            else:
-                # here we add events directly to dynamics
-                for spike_flag, oc in self._event_builder(obj.events, obj.event_codes):
-                    dynamics.add_event_handler(oc)
-                for var in obj.user_equations.diff_eq_names:
-                    td = lems.TimeDerivative(var, renderer.render_expr(str(ng_equations[var].expr)))
-                    dynamics.add_time_derivative(td)
-
-            self._component_type.dynamics = dynamics
-            # making componenttype is done so we add it to the model
-            self._model.add_component_type(self._component_type)
-            obj.namespace.pop("init", None)                # kick out init
-            # adding component to the model
-            paramdict = dict()
-            for param in obj.namespace:
-                paramdict[param] = self._unit_lems_validator(obj.namespace[param])
-            self._model.add(lems.Component("n{}".format(e+1), ct_name, **paramdict))
+    def export_to_file(self, filename):
+        """
+        Exports model to file *filename*
+        """
+        if len(filename.split("."))==1:
+            filename += ".xml"
+        xmlstring = self._dommodel.toprettyxml("  ", "\n")
+        with open(filename, "w") as f:
+            f.write(xmlstring)
 
     @property
     def model(self):
