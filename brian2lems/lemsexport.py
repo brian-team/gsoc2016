@@ -33,6 +33,7 @@ NOT_REFRACTORY    = "not_refractory"
 INTEGRATING       = "integrating"
 REFRACTORY        = "refractory"
 UNLESS_REFRACTORY = "unless refractory"
+INDEX             = "index"    # iterator in LEMS
 
 nmlcdpath = "brian2lems/"  # path to NeuroMLCoreDimensions.xml file
 LEMS_CONSTANTS_XML = "LEMSUnitsConstants.xml"  # path to units constants
@@ -178,8 +179,11 @@ class NMLExporter(object):
         
         if hasattr(obj, "namespace") and not obj.namespace:
             obj.namespace = namespace
-        if not "n" in obj.namespace:
+        if not "n" in obj.namespace: # here something needs to be changed !!!!!!!!
             obj.namespace["N"] = obj.N
+            self._nr_of_neurons = ("N", obj.N) # maybe not the most robust solution
+        else:
+            self._nr_of_neurons = ("n", obj.N)
         ct_name = "neuron{}".format(idx_of_ng+1)
         self._component_type = lems.ComponentType(ct_name)
         # adding parameters
@@ -292,31 +296,40 @@ class NMLExporter(object):
         Adds ComponentType with MultiInstantiate in order to make
         a network of neurons.
         """
+        PARAM_SUBSCRIPT = "_p"
         multi_ct = lems.ComponentType(name+"network")
         structure = lems.Structure()
-        multi_ins = lems.MultiInstantiate(component=name, number="n")  # ???
+        multi_ins = lems.MultiInstantiate(name, number=self._nr_of_neurons[0]+PARAM_SUBSCRIPT)  # ???
         param_dict = {}
         for sp in special_properties:
             if special_properties[sp] is None:
-                multi_ct.add(lems.Parameter(name=sp+"_p", dimension=self._all_params_unit[sp]))
-                multi_ins.add(lems.Assign(property=sp, value=sp+"_p"))
+                multi_ct.add(lems.Parameter(name=sp+PARAM_SUBSCRIPT, dimension=self._all_params_unit[sp]))
+                multi_ins.add(lems.Assign(property=sp, value=sp+PARAM_SUBSCRIPT))
                 param_dict[sp] = parameters[sp]
             else:
-                multi_ct.add(lems.Parameter(name=sp, dimension=self._all_params_unit[sp]))
+                # multi_ct.add(lems.Parameter(name=sp, dimension=self._all_params_unit[sp]))
                 # check if there are some units in equations
                 equation = special_properties[sp]
                 for i in get_identifiers(equation):
-                    if i in name_to_unit:
+                    # iterator is a special case
+                    if i == "i":
+                        regexp_noletter = "[^a-zA-Z0-9]"
+                        equation = re.sub("{re}i{re}".format(re=regexp_noletter),\
+                                                  " {} ".format(INDEX), equation)
+                    # here it's assumed that we don't use Netwton in neuron models
+                    elif i in name_to_unit and i != "N":
                         const_i = i+'const'
                         multi_ct.add(lems.Constant(name=const_i, symbol=const_i,
                                      dimension=self._all_params_unit[sp], value="1"+i))
                         equation = re.sub(i, const_i, equation)
+                    if i in special_properties:
+                        equation = re.sub(i,i+PARAM_SUBSCRIPT, equation)
                 multi_ins.add(lems.Assign(property=sp, value=equation))
         structure.add(multi_ins)
         multi_ct.structure = structure
         self._model.add(multi_ct)
         param_dict = dict([(k+"_p", v) for k, v in param_dict.items()])
-        self._model.add(lems.Component(name+"network", name+"network", **param_dict))
+        self._model.add(lems.Component(name+"Multi", name+"network", **param_dict))
 
     def add_statemonitor(self, obj):
         """
