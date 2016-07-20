@@ -299,7 +299,8 @@ class NMLExporter(object):
         PARAM_SUBSCRIPT = "_p"
         multi_ct = lems.ComponentType(name+"network")
         structure = lems.Structure()
-        multi_ins = lems.MultiInstantiate(name, number=self._nr_of_neurons[0]+PARAM_SUBSCRIPT)  # ???
+        multi_ins = lems.MultiInstantiate(component_type=name,
+                                          number=self._nr_of_neurons[0]+PARAM_SUBSCRIPT)
         param_dict = {}
         for sp in special_properties:
             if special_properties[sp] is None:
