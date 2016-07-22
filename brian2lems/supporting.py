@@ -183,7 +183,7 @@ class NeuroMLSimulation(object):
         self._output_idx += 1
         self.output_files[self._output_idx] = self.doc.createElement('OutputFile')
         self.outcolumns[self._output_idx] = []
-        attributes = [("id", outfileid), ("filename", filename)]
+        attributes = [("id", outfileid), ("fileName", filename)]
         for attr_name, attr_value in attributes:
             self.output_files[self._output_idx].setAttribute(attr_name, attr_value)
 
@@ -205,7 +205,7 @@ class NeuroMLSimulation(object):
         self._event_output_idx += 1
         self.event_output_files[self._event_output_idx] = self.doc.createElement('EventOutputFile')
         self.eventselections[self._event_output_idx] = []
-        attributes = [("id", outfileid), ("filename", filename),
+        attributes = [("id", outfileid), ("fileName", filename),
                       ("format", format_)]
         for attr_name, attr_value in attributes:
             self.event_output_files[self._event_output_idx].setAttribute(attr_name, attr_value)

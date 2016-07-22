@@ -3,7 +3,7 @@ from brian2lems.lemsexport import all_devices
 
 set_device('lemsdevice')
 
-n = 1000
+n = 100
 duration = 1*second
 tau = 10*ms
 Ek = 12
@@ -17,7 +17,7 @@ group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
 group.v = 0*mV
 group.v0 = '20*mV * i / (N-1)'
 
-monitor = SpikeMonitor(group)
+monitor = SpikeMonitor(group, record=[33,53])
 
 run(duration/2)
 tau = 20*ms

@@ -411,6 +411,9 @@ class NMLExporter(object):
             self._model.add(lems.Include(LEMS_CONSTANTS_XML))
         else:
             self._model.add(lems.Include(constants_file))
+        includes = set(includes)
+        for incl in INCLUDES:
+            includes.add(incl)
         for incl in includes:
             self.add_include(incl)
         neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
@@ -538,7 +541,6 @@ class LEMSDevice(Device):
                 merged_namespace[key] = value
 
         self.network = network
-        print monitors
         assignments = list(self.assignments)
         self.assignments[:] = []
         self.runs.append((descriptions, duration, merged_namespace, assignments))
@@ -563,8 +565,7 @@ class LEMSDevice(Device):
         exporter = NMLExporter()
         exporter.create_lems_model(self.network, namespace=namespace,
                                                  initializers=initializers)
-        model = exporter.model
-        model.export_to_file(filename)
+        exporter.export_to_file(filename)
 
 
 lems_device = LEMSDevice()
