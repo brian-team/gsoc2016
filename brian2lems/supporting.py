@@ -57,6 +57,7 @@ def from_string(rep):
     else:
         return float(value)
 
+
 def brian_unit_to_lems(valunit):
     'Simply adds * between value and unit, e.g. "20. mV" -> "20.*mV"'
     if float(valunit)==0:
@@ -64,6 +65,7 @@ def brian_unit_to_lems(valunit):
     if type(valunit)!=str:
         valunit = str(valunit)
     return valunit.replace(' ', '*')
+
 
 def read_nml_dims(nmlcdpath=""):
     """
@@ -134,6 +136,9 @@ class NeuroMLSimulation(object):
         self.outcolumns = {}
         self.output_files = {}
         self._output_idx = -1
+        self.eventselections = {}
+        self.event_output_files = {}
+        self._event_output_idx = -1
 
     def create_simulation(self, simid, target, length, step):
         """
@@ -173,25 +178,49 @@ class NeuroMLSimulation(object):
 
     def add_outputfile(self, outfileid, filename="recordings.dat"):
         """
-        Adds an OutputFile element to a recently added Display.
+        Adds an OutputFile to Simulation.
         """
         self._output_idx += 1
         self.output_files[self._output_idx] = self.doc.createElement('OutputFile')
-        self.lines[self._disp_idx] = []
+        self.outcolumns[self._output_idx] = []
         attributes = [("id", outfileid), ("filename", filename)]
         for attr_name, attr_value in attributes:
             self.output_files[self._output_idx].setAttribute(attr_name, attr_value)
 
     def add_outputcolumn(self, ocid, quantity):
         """
-        Adds an OutputColumn element to a recently added Display.
+        Adds an OutputColumn element to a recently added OutputFile tag.
         """
-        assert self.displays, "You need to add display first"
+        assert self.output_files, "You need to add output_files first"
         outputcolumn = self.doc.createElement('OutputColumn')
         attributes = [("id", ocid), ("quantity", quantity)]
         for attr_name, attr_value in attributes:
             outputcolumn.setAttribute(attr_name, attr_value)
         self.outcolumns[self._output_idx].append(outputcolumn)
+
+    def add_eventoutputfile(self, outfileid, filename="recordings.spikes", format_="TIME_ID"):
+        """
+        Adds an EventOutputFile element to a recently added Display.
+        """
+        self._event_output_idx += 1
+        self.event_output_files[self._event_output_idx] = self.doc.createElement('EventOutputFile')
+        self.eventselections[self._event_output_idx] = []
+        attributes = [("id", outfileid), ("filename", filename),
+                      ("format", format_)]
+        for attr_name, attr_value in attributes:
+            self.event_output_files[self._event_output_idx].setAttribute(attr_name, attr_value)
+
+    def add_eventselection(self, esid, select, event_port="spike"):
+        """
+        Adds an EventSelection element to a recently added EventOutputFile.
+        """
+        assert self.event_output_files, "You need to add EventOutputFile first"
+        eventselection = self.doc.createElement('EventSelection')
+        attributes = [("id", esid), ("select", select),
+                      ("eventPort", event_port)]
+        for attr_name, attr_value in attributes:
+            eventselection.setAttribute(attr_name, attr_value)
+        self.eventselections[self._event_output_idx].append(eventselection)
 
     def build(self):
         """
@@ -205,11 +234,51 @@ class NeuroMLSimulation(object):
             for outcol in self.outcolumns[k]:
                 self.output_files[k].appendChild(outcol)
             self.simulation.appendChild(self.output_files[k])
+        for k in self.event_output_files:
+            for evsel in self.eventselections[k]:
+                self.event_output_files[k].appendChild(evsel)
+            self.simulation.appendChild(self.event_output_files[k])
         return self.simulation
 
     def __repr__(self):
         return self.simulation.toprettyxml('  ', '\n')
 
+class NeuroMLSimpleNetwork(object):
+
+    def __init__(self, id_):
+        self.doc = minidom.Document()
+        self.network = self.doc.createElement('network')
+        self.network.setAttribute("id", id_)
+        self.components = []
+    
+    def add_component(self, id_, type_, **attributes):
+        component = self.doc.createElement('Component')
+        component.setAttribute("id", id_)
+        component.setAttribute("type", type_)
+        for attr_name, attr_value in attributes.iteritems():
+            component.setAttribute(str(attr_name), str(attr_value))
+        self.components.append(component)
+
+    def build(self):
+        for comp in self.components:
+            self.network.appendChild(comp)
+        return self.network
+
+    def __repr__(self):
+        return self.network.toprettyxml('  ', '\n')
+
+class NeuroMLTarget(object):
+
+    def __init__(self, component):
+        self.doc = minidom.Document()
+        self.target = self.doc.createElement('Target')
+        self.target.setAttribute("component", component)
+
+    def build(self):
+        return self.target
+
+    def __repr__(self):
+        return self.target.toprettyxml('  ', '\n')
 
 if __name__ == '__main__':
     # test units parser
@@ -219,10 +288,20 @@ if __name__ == '__main__':
                 "-1.00000008E8", "0.07 per_ms", "10pS"]
     for i in testlist:
         from_string(i)
-    print 'ok'
-
+    print '+',
     # test NeuroMLSimulation
     nmlsim = NeuroMLSimulation('a', 'b')
     nmlsim.add_display('ex')
     nmlsim.add_line('line1', 'v')
+    nmlsim.add_line('line2', 'w')
+    nmlsim.add_outputfile('of1')
+    nmlsim.add_outputcolumn('1', '[3]')
+    nmlsim.add_eventoutputfile('eof1')
+    nmlsim.add_eventselection('1', '[5]')
     nmlsim.build()
+    print '+',
+    #test NeuroMLSimpleNetwork
+    nmlnet = NeuroMLSimpleNetwork("net")
+    nmlnet.add_component("i0", "lf", a=3,b=4)
+    nmlnet.build()
+    print '+',
