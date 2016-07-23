@@ -349,7 +349,7 @@ class NMLExporter(object):
                             self._model_namespace["ct_populationname"],
                             **param_dict)
 
-    def add_statemonitor(self, obj):
+    def add_statemonitor(self, obj, filename="recording"):
         """
         From StateMonitor object extracts indices to recording in LEMS 
         simulation and makes a display.
@@ -366,12 +366,13 @@ class NMLExporter(object):
                 self._simulation.add_line("line{}".format(i),
                                           "{}[{}]/v".format(self._model_namespace["populationname"],i))
 
-    def add_spikemonitor(self, obj, filename="recording.spikes"):
+    def add_spikemonitor(self, obj, filename="recording"):
         """
         From SpikeMonitor object extracts indices to recording in LEMS 
         simulation and makes a display.
         *obj* -- SpikeMonitor object
         """
+        filename += '.spikes'
         indices = obj.record
         if isinstance(indices, bool) and indices == True:
             raise Exception('indices == True !!!! ')
@@ -398,7 +399,8 @@ class NMLExporter(object):
         self._model.add(lems.Include(includefile))
     
     def create_lems_model(self, network=None, namespace={}, initializers={},
-                                           constants_file=None, includes=[]):
+                                           constants_file=None, includes=[],
+                                           recordingsname='recording'):
         """
         From given *network* returns LEMS model object.
         """
@@ -436,10 +438,11 @@ class NMLExporter(object):
         self._model_namespace['simulname'] = "sim1"
         self._simulation = NeuroMLSimulation(self._model_namespace['simulname'],
                                              self._model_namespace['networkname'])
+        
         for e, obj in enumerate(state_monitors):
-            self.add_statemonitor(obj)
+            self.add_statemonitor(obj, filename=recordingsname)
         for e, obj in enumerate(spike_monitors):
-            self.add_spikemonitor(obj)
+            self.add_spikemonitor(obj, filename=recordingsname)
         simulation = self._simulation.build()
         self._extend_dommodel(simulation)
         target = NeuroMLTarget(self._model_namespace['simulname'])
@@ -484,7 +487,7 @@ class DummyCodeObject(object):
 
 class LEMSDevice(Device):
     '''
-    The `Device` used LEMS/NeuroML2 code genration.
+    The `Device` used for LEMS/NeuroML2 code genration.
     '''
     def __init__(self):
         super(LEMSDevice, self).__init__()
@@ -556,15 +559,24 @@ class LEMSDevice(Device):
         self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
 
     def build(self, filename):
+        """
+        Collecting initializers and namespace from self.runs and passing
+        it to the exporter.
+        """
         initializers = {}
         for descriptions, duration, namespace, assignments in self.runs:
             for assignment in assignments:
                 if not assignment[2] in initializers:
                     initializers[assignment[2]] = assignment[-1]
-
+        
+        if len(filename.split("."))!=1:
+            filename_ = 'recording_' + filename.split(".")[0]
+        else:
+            filename_ = 'recording_' + filename
         exporter = NMLExporter()
         exporter.create_lems_model(self.network, namespace=namespace,
-                                                 initializers=initializers)
+                                                 initializers=initializers,
+                                                 recordingsname=filename_)
         exporter.export_to_file(filename)
 
 
