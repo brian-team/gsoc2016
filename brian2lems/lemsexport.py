@@ -349,28 +349,37 @@ class NMLExporter(object):
                             self._model_namespace["ct_populationname"],
                             **param_dict)
 
-    def add_statemonitor(self, obj, filename="recording"):
+    def add_statemonitor(self, obj, filename="recording", outputfile=False):
         """
         From StateMonitor object extracts indices to recording in LEMS 
         simulation and makes a display.
         *obj* -- StateMonitor object
+        *filename*  -- name of output file without extension
+        *outputfile* -- flag sayinf whether to record output to file
         """
+        filename += '.dat'
         indices = obj.record
         if isinstance(indices, bool) and indices == True:
             raise Exception('indices == True !!!! ')
         variables = obj.needed_variables
         for e, var in enumerate(variables):
             self._simulation.add_display("disp{}".format(e), str(var)) # max, min etc ???
+            if outputfile:
+                self._simulation.add_outputfile("of{}".format(e), filename=filename)
             for i in indices:
                 # scale, time_scale ???
                 self._simulation.add_line("line{}".format(i),
                                           "{}[{}]/v".format(self._model_namespace["populationname"],i))
+                if outputfile:
+                    self._simulation.add_outputcolumn("{}".format(i),
+                                                      "{}[{}]/v".format(self._model_namespace["populationname"],i))
 
     def add_spikemonitor(self, obj, filename="recording"):
         """
         From SpikeMonitor object extracts indices to recording in LEMS 
         simulation and makes a display.
         *obj* -- SpikeMonitor object
+        *filename*  -- name of output file without extension
         """
         filename += '.spikes'
         indices = obj.record
