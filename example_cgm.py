@@ -17,7 +17,7 @@ group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
 group.v = 0*mV
 group.v0 = '20*mV * i / (N-1)'
 
-monitor = SpikeMonitor(group, record=[33,53])
+monitor = SpikeMonitor(group, record=[3,33])
 
 run(duration/2)
 

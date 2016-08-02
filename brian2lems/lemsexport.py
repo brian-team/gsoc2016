@@ -360,7 +360,9 @@ class NMLExporter(object):
         filename += '.dat'
         indices = obj.record
         if isinstance(indices, bool) and indices == True:
-            raise Exception('indices == True !!!! ')
+            indices = np.arange(self._nr_of_neurons)
+            #raise Exception('indices == True !!!! ')
+        indices += 1
         variables = obj.needed_variables
         for e, var in enumerate(variables):
             self._simulation.add_display("disp{}".format(e), str(var)) # max, min etc ???
@@ -384,7 +386,9 @@ class NMLExporter(object):
         filename += '.spikes'
         indices = obj.record
         if isinstance(indices, bool) and indices == True:
-            raise Exception('indices == True !!!! ')
+            indices = np.arange(self._nr_of_neurons)
+            #raise Exception('indices == True !!!! ')
+        indices += 1
         variables = obj.needed_variables
         self._simulation.add_eventoutputfile("eof", filename)
         for i in indices:
@@ -449,7 +453,7 @@ class NMLExporter(object):
                                              self._model_namespace['networkname'])
         
         for e, obj in enumerate(state_monitors):
-            self.add_statemonitor(obj, filename=recordingsname)
+            self.add_statemonitor(obj, filename=recordingsname, outputfile=True)
         for e, obj in enumerate(spike_monitors):
             self.add_spikemonitor(obj, filename=recordingsname)
         simulation = self._simulation.build()
