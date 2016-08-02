@@ -20,5 +20,4 @@ group.v0 = '20*mV * i / (N-1)'
 monitor = SpikeMonitor(group, record=[3,33])
 
 run(duration/2)
-
 device.build("ifcgmtest.xml")

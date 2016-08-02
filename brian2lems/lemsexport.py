@@ -20,6 +20,7 @@ from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
                        NeuroMLTarget
 from cgmhelper import *
 
+import numpy as np
 import warnings
 import re
 import pdb
@@ -358,7 +359,7 @@ class NMLExporter(object):
         *outputfile* -- flag sayinf whether to record output to file
         """
         filename += '.dat'
-        indices = obj.record
+        indices = np.asarray(obj.record)
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
             #raise Exception('indices == True !!!! ')
@@ -384,7 +385,7 @@ class NMLExporter(object):
         *filename*  -- name of output file without extension
         """
         filename += '.spikes'
-        indices = obj.record
+        indices = np.asarray(obj.record)
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
             #raise Exception('indices == True !!!! ')
@@ -581,7 +582,8 @@ class LEMSDevice(Device):
             for assignment in assignments:
                 if not assignment[2] in initializers:
                     initializers[assignment[2]] = assignment[-1]
-        
+        if len(self.runs) > 1:
+            raise NotImplementedError("Currently only single run is supported.")
         if len(filename.split("."))!=1:
             filename_ = 'recording_' + filename.split(".")[0]
         else:
