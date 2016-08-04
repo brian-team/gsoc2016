@@ -363,7 +363,6 @@ class NMLExporter(object):
         indices = np.asarray(obj.record).copy()
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
-            #raise Exception('indices == True !!!! ')
         indices += 1
         variables = obj.needed_variables
         for e, var in enumerate(variables):
@@ -389,7 +388,6 @@ class NMLExporter(object):
         indices = np.asarray(obj.record).copy()
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
-            #raise Exception('indices == True !!!! ')
         indices += 1
         variables = obj.needed_variables
         self._simulation.add_eventoutputfile("eof", filename)
@@ -444,8 +442,8 @@ class NMLExporter(object):
             self.add_neurongroup(obj, e, namespace, initializers)
         # DOM structure of the whole model is constructed below
         self._dommodel = self._model.export_to_dom()
-        # Having that a population should be created in *make_multiinstantiate*
-        # which we add do our DOM structure.
+        # A population should be created in *make_multiinstantiate*
+        # so we can add it to our DOM structure.
         if self._population:
             self._extend_dommodel(self._population)
         # if some State or Spike Monitors occur we support them by

@@ -151,6 +151,12 @@ class NeuroMLSimulation(object):
         for attr_name, attr_value in attributes:
             self.simulation.setAttribute(attr_name, attr_value)
 
+    def update_simulation_attribute(self, attr_name, attr_value):
+        """
+        Updates simulation attributes.
+        """
+        self.simulation.setAttribute(attr_name, attr_value)
+
     def add_display(self, dispid, title="", time_scale="1ms", xmin="0",
                                   xmax="1000", ymin="0", ymax="11"):
         """
