@@ -3,6 +3,7 @@ from brian2 import get_or_create_dimension
 import xml.dom.minidom as minidom
 
 import re
+import os
 
 name_to_unit = {u.dispname: u for u in all_units}
 
@@ -83,7 +84,7 @@ def read_nml_dims(nmlcdpath=""):
     lems_dimenssions : `dict`
         Dictionary with LEMS dimensions.
     """
-    path = nmlcdpath + "NeuroMLCoreDimensions.xml"
+    path = os.path.join(nmlcdpath, "NeuroMLCoreDimensions.xml")
     domtree = minidom.parse(path)
     collection = domtree.documentElement
     dimsCollection = collection.getElementsByTagName("Dimension")
@@ -114,7 +115,7 @@ def read_nml_units(nmlcdpath=""):
     lems_units : `list`
         List with LEMS units.
     """
-    path = nmlcdpath + "NeuroMLCoreDimensions.xml"
+    path = os.path.join(nmlcdpath, "NeuroMLCoreDimensions.xml")
     domtree = minidom.parse(path)
     collection = domtree.documentElement
     unitsCollection = collection.getElementsByTagName("Unit")

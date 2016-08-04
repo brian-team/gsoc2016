@@ -23,6 +23,7 @@ from cgmhelper import *
 import numpy as np
 import warnings
 import re
+import os
 import pdb
 
 __all__ = []
@@ -39,7 +40,7 @@ INDEX             = "index"    # iterator in LEMS
 BASE_CELL         = "baseCell"
 BASE_POPULATION   = "basePopulation"
 
-nmlcdpath = "brian2lems/"  # path to NeuroMLCoreDimensions.xml file
+nmlcdpath = os.path.dirname(__file__)  # path to NeuroMLCoreDimensions.xml file
 LEMS_CONSTANTS_XML = "LEMSUnitsConstants.xml"  # path to units constants
 
 nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)
@@ -359,7 +360,7 @@ class NMLExporter(object):
         *outputfile* -- flag sayinf whether to record output to file
         """
         filename += '.dat'
-        indices = np.asarray(obj.record)
+        indices = np.asarray(obj.record).copy()
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
             #raise Exception('indices == True !!!! ')
@@ -385,7 +386,7 @@ class NMLExporter(object):
         *filename*  -- name of output file without extension
         """
         filename += '.spikes'
-        indices = np.asarray(obj.record)
+        indices = np.asarray(obj.record).copy()
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
             #raise Exception('indices == True !!!! ')
@@ -507,6 +508,16 @@ class LEMSDevice(Device):
         super(LEMSDevice, self).__init__()
         self.runs = []
         self.assignments = []
+        self.build_on_run = True
+        self.build_options = None
+
+    def reinit(self):
+        build_on_run = self.build_on_run
+        build_options = self.build_options
+        self.__init__()
+        super(LEMSDevice, self).reinit()
+        self.build_on_run = build_on_run
+        self.build_options = build_options
 
     # This device does not actually calculate/store any data, so the following
     # are just dummy implementations
