@@ -5,7 +5,7 @@ from brian2.equations.equations import PARAMETER, DIFFERENTIAL_EQUATION,\
                                        SUBEXPRESSION
 from brian2.core.network import *
 from brian2.core.namespace import get_local_namespace, DEFAULT_UNITS
-from brian2.devices.device import Device, all_devices
+from brian2.devices.device import Device, RuntimeDevice, all_devices
 from brian2.utils.logger import get_logger
 from brian2.units.fundamentalunits import _siprefixes
 from brian2.utils.stringtools import get_identifiers
@@ -498,7 +498,7 @@ class DummyCodeObject(object):
         pass
 
 
-class LEMSDevice(Device):
+class LEMSDevice(RuntimeDevice):
     '''
     The `Device` used for LEMS/NeuroML2 code genration.
     '''
@@ -519,27 +519,6 @@ class LEMSDevice(Device):
 
     # This device does not actually calculate/store any data, so the following
     # are just dummy implementations
-
-    def add_array(self, var):
-        pass
-
-    def init_with_zeros(self, var, dtype):
-        pass
-
-    def fill_with_array(self, var, arr):
-        pass
-
-    def init_with_arange(self, var, start, dtype):
-        pass
-
-    def get_value(self, var, access_data=True):
-        return np.zeros(var.size, dtype=var.dtype)
-
-    def resize(self, var, new_size):
-        pass
-
-    def code_object(self, *args, **kwds):
-        return DummyCodeObject(*args, **kwds)
 
     def synaptic_pathway_before_run(self, pathway, run_namespace):
         pass  # No spike queue initialization necessary
