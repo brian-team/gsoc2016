@@ -365,6 +365,10 @@ class NMLExporter(object):
             indices = np.arange(self._nr_of_neurons)
         indices += 1
         variables = obj.needed_variables
+        # step of integration
+        dt = str(obj.clock.dt.in_unit(ms))
+        self._simulation.update_simulation_attribute('step', dt)
+        # adding display and outputcolumn for each recorded neuron
         for e, var in enumerate(variables):
             self._simulation.add_display("disp{}".format(e), str(var)) # max, min etc ???
             if outputfile:
@@ -391,6 +395,7 @@ class NMLExporter(object):
         indices += 1
         variables = obj.needed_variables
         self._simulation.add_eventoutputfile("eof", filename)
+        # adding eventselection for each recorded neuron
         for i in indices:
             self._simulation.add_eventselection("line{}".format(i),
                     "{}[{}]".format(self._model_namespace["populationname"],i),
