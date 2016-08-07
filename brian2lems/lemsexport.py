@@ -565,11 +565,17 @@ class LEMSDevice(RuntimeDevice):
     def variableview_set_with_index_array(self, variableview, item, value, check_units):
         self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
 
-    def build(self, filename):
+    def build(self, filename=None, direct_call=True):
         """
         Collecting initializers and namespace from self.runs and passing
         it to the exporter.
         """
+        #if self.build_on_run and direct_call:
+        #    raise RuntimeError('You used set_device with build_on_run=True '
+        #                       '(the default option), which will automatically '
+        #                       'build the simulation at the first encountered '
+        #                       'run call - do not call device.build manually '
+        #                       'in this case.')
         initializers = {}
         for descriptions, duration, namespace, assignments in self.runs:
             for assignment in assignments:
