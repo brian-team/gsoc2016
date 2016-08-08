@@ -401,6 +401,12 @@ class NMLExporter(object):
                     "{}[{}]".format(self._model_namespace["populationname"],i),
                     event_port = "spike")
 
+    def add_synapses(self, obj):
+        """
+        Adds synapses to the model.
+        """
+        pass
+
     def add_population(self, net_id, component_id, type_, **args):
         """
         Sets population of neurons to resulting file.
@@ -439,6 +445,8 @@ class NMLExporter(object):
         neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
         state_monitors = [o for o in net.objects if type(o) is StateMonitor]
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
+        synapses       = [o for o in net.objects if type(o) is Synapses]
+
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
 
         # First step is to add individual neuron deifinitions and initialize
