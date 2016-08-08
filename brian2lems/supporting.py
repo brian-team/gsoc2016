@@ -60,7 +60,20 @@ def from_string(rep):
 
 
 def brian_unit_to_lems(valunit):
-    'Simply adds * between value and unit, e.g. "20. mV" -> "20.*mV"'
+    """
+    Returns string representation of LEMS unit where * is between 
+    value and unit e.g. "20. mV" -> "20.*mV".
+
+    Parameters
+    ----------
+    valunit : `Quantity` or `str`
+        text or brian2.Quantity representation of a value with unit
+
+    Returns
+    -------
+    valstr : `str`
+        string representation of LEMS unit
+    """
     if float(valunit)==0:
         return '0'
     if type(valunit)!=str:
@@ -127,8 +140,25 @@ def read_nml_units(nmlcdpath=""):
 
 
 class NeuroMLSimulation(object):
-
+    '''
+    NeuroMLSimulation class representing Simulation tag in NeuroML
+    syntax as a XML DOM representation.
+    '''
     def __init__(self, simid, target, length="1s", step="0.1ms"):
+        '''
+        NeuroMLSimulation object constructor.
+
+        Parameters
+        ----------
+        simid : str
+            simulation id.
+        target : str
+            target NeuroML object: component or network
+        length : str, optional
+            length of simulation, default 1 sec
+        step : str, optional
+            step of integration, default 0.1 ms
+        '''
         self.doc = minidom.Document()
         self.create_simulation(simid, target, length, step)
         self.lines = {}
@@ -144,6 +174,17 @@ class NeuroMLSimulation(object):
     def create_simulation(self, simid, target, length, step):
         """
         Adds a Simulation element to DOM structure at init.
+
+        Parameters
+        ----------
+        simid : str
+            simulation id.
+        target : str
+            target NeuroML object: component or network
+        length : str, optional
+            length of simulation, default 1 sec
+        step : str, optional
+            step of integration, default 0.1 ms
         """
         self.simulation = self.doc.createElement('Simulation')
         attributes = [("id", simid), ("target", target),
@@ -154,13 +195,33 @@ class NeuroMLSimulation(object):
     def update_simulation_attribute(self, attr_name, attr_value):
         """
         Updates simulation attributes.
+
+        Parameters
+        ----------
+        attr_name : str
+            attribute name
+        attr_value : str or int or float
+            attribute value
         """
+        if not type(attr_value) is str:
+            attr_value = str(attr_value)
         self.simulation.setAttribute(attr_name, attr_value)
 
     def add_display(self, dispid, title="", time_scale="1ms", xmin="0",
                                   xmax="1000", ymin="0", ymax="11"):
         """
         Adds a Display element to Simulation.
+
+        Parameters
+        ----------
+        dispid : str
+            display id
+        title : str
+            title printed on display window
+        time_scale : str
+            time scale of a plot
+        xmin, xmax, ymin, ymax : str
+            limits of plot
         """
         self._disp_idx += 1
         self.displays[self._disp_idx] = self.doc.createElement('Display')
@@ -174,6 +235,17 @@ class NeuroMLSimulation(object):
     def add_line(self, linid, quantity, scale="1mV", time_scale="1ms"):
         """
         Adds a Line element to a recently added Display.
+
+        Parameters
+        ----------
+        linid : str
+            line id
+        quantity : str
+            measure to plot
+        scale : str
+            scale of a function
+        time_scale : str
+            time scale of a line
         """
         assert self.displays, "You need to add display first"
         line = self.doc.createElement('Line')
@@ -186,6 +258,13 @@ class NeuroMLSimulation(object):
     def add_outputfile(self, outfileid, filename="recordings.dat"):
         """
         Adds an OutputFile to Simulation.
+
+        Parameters
+        ----------
+        outfileid : str
+            OutputFile id
+        filename : str
+            name of an output file
         """
         self._output_idx += 1
         self.output_files[self._output_idx] = self.doc.createElement('OutputFile')
@@ -197,6 +276,13 @@ class NeuroMLSimulation(object):
     def add_outputcolumn(self, ocid, quantity):
         """
         Adds an OutputColumn element to a recently added OutputFile tag.
+
+        Parameters
+        ----------
+        ocid : str
+            OutputColumn id
+        quantity : str
+            measure to store in a column
         """
         assert self.output_files, "You need to add output_files first"
         outputcolumn = self.doc.createElement('OutputColumn')
@@ -208,6 +294,15 @@ class NeuroMLSimulation(object):
     def add_eventoutputfile(self, outfileid, filename="recordings.spikes", format_="TIME_ID"):
         """
         Adds an EventOutputFile element to a recently added Display.
+
+        Parameters
+        ----------
+        outfileid : str
+            EventOutputFile id
+        filename : str
+            name of an output file
+        format : str, optional
+            format of data storage, default TIME_ID
         """
         self._event_output_idx += 1
         self.event_output_files[self._event_output_idx] = self.doc.createElement('EventOutputFile')
@@ -220,6 +315,15 @@ class NeuroMLSimulation(object):
     def add_eventselection(self, esid, select, event_port="spike"):
         """
         Adds an EventSelection element to a recently added EventOutputFile.
+
+        Parameters
+        ----------
+        esid : str
+            EventSelection id
+        select : str
+            index of selected neuron
+        event_port : str
+            event port name, default 'spike'
         """
         assert self.event_output_files, "You need to add EventOutputFile first"
         eventselection = self.doc.createElement('EventSelection')
@@ -230,9 +334,15 @@ class NeuroMLSimulation(object):
         self.eventselections[self._event_output_idx].append(eventselection)
 
     def build(self):
-        """
-        Builds NeuroML DOM structure of Simulation.
-        """
+        '''
+        Builds NeuroML DOM structure of Simulation. It returns DOM
+        object or it can be accessed by *object.simulation*.
+
+        Returns
+        -------
+        simulation : xml.minidom.dom
+            DOM representation of simulation.
+        '''
         for k in self.displays:
             for line in self.lines[k]:
                 self.displays[k].appendChild(line)
