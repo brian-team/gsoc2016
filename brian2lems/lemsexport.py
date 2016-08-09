@@ -186,7 +186,21 @@ class NMLExporter(object):
     def add_neurongroup(self, obj, idx_of_ng, namespace, initializers):
         """
         Adds NeuronGroup object *obj* to self._model.
-        *obj* -- NeuronGroup object
+        
+        If number of elements is 1 it adds component of that type, if
+        it's bigger, the network is created by calling:
+        `make_multiinstantiate`.
+
+        Parameters
+        ----------
+        obj : brian2.NeuronGroup
+            NeuronGroup object to parse
+        idx_of_ng : int
+            index of neurongroup
+        namespace : dict
+            dictionary with all neccassary variables definition
+        initializers : dict
+            initial values for all model variables
         """
         if hasattr(obj, "namespace") and not obj.namespace:
             obj.namespace = namespace
@@ -305,6 +319,15 @@ class NMLExporter(object):
         """
         Adds ComponentType with MultiInstantiate in order to make
         a population of neurons.
+
+        Parameters
+        ----------
+        special_properties : dict
+            all variables to be defined in MultiInstantiate
+        name : str
+            MultiInstantiate component name
+        parameters : dict
+            all extra parameters needed
         """
         PARAM_SUBSCRIPT = "_p"
         self._model_namespace["ct_populationname"] = name+"Multi"
@@ -354,10 +377,19 @@ class NMLExporter(object):
     def add_statemonitor(self, obj, filename="recording", outputfile=False):
         """
         From StateMonitor object extracts indices to recording in LEMS 
-        simulation and makes a display.
-        *obj* -- StateMonitor object
-        *filename*  -- name of output file without extension
-        *outputfile* -- flag sayinf whether to record output to file
+        simulation and makes a display and recording file.
+        
+        Make sure before calling that *simulation* object is created.
+
+        Parameters
+        ----------
+        obj : brian2.StateMonitor
+            StateMonitor object
+        filename : str, optional
+            name of output file without extension, default 'recording'
+        outputfile : dict, optional
+            flag sayinf whether to record output to file or only add
+            display, default False
         """
         filename += '.dat'
         indices = np.asarray(obj.record).copy()
@@ -384,9 +416,16 @@ class NMLExporter(object):
     def add_spikemonitor(self, obj, filename="recording"):
         """
         From SpikeMonitor object extracts indices to recording in LEMS 
-        simulation and makes a display.
-        *obj* -- SpikeMonitor object
-        *filename*  -- name of output file without extension
+        simulation.
+
+        Make sure before calling that *simulation* object is created.
+
+        Parameters
+        ----------
+        obj : brian2.SpikeMonitor
+            SpikeMonitor object
+        filename : str, optional
+            name of output file without extension, default 'recording'
         """
         filename += '.spikes'
         indices = np.asarray(obj.record).copy()
@@ -410,6 +449,17 @@ class NMLExporter(object):
     def add_population(self, net_id, component_id, type_, **args):
         """
         Sets population of neurons to resulting file.
+
+        Parameters
+        ----------
+        net_id : str
+            network id
+        component_id : str
+            component id
+        type_ : str
+            component type
+        args : ...
+            all extra keyword arguments
         """
         nmlnetwork = NeuroMLSimpleNetwork(net_id)
         nmlnetwork.add_component(component_id, type_, **args)
@@ -419,6 +469,11 @@ class NMLExporter(object):
         """
         Adds file to include *includefile* to model.
         *includefile* -- str
+
+        Parameters
+        ----------
+        includefile : str
+            name of the file to include
         """
         self._model.add(lems.Include(includefile))
     
