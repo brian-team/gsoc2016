@@ -1,6 +1,7 @@
 import unittest
 import os
 import sys
+import platform
 import numpy as np
 from subprocess import call
 from brian2 import *
@@ -9,7 +10,10 @@ import matplotlib.pyplot as plt
 
 plain_numbers_from_list = lambda x: str(x)[1:-1].replace(',','')
 
-JNML_PATH = "C:/jNeuroMLJar"
+if platform.system()=='Windows':
+    JNML_PATH = "C:/jNeuroMLJar"
+else:
+    JNML_PATH = ""
 xml_filename = "ifcgmtest.xml"
 idx_to_record = [2, 55, 98]
 output_jnml_file = "recording_ifcgmtest"
@@ -32,7 +36,8 @@ class RecordingsTest(unittest.TestCase):
 
         outbrian = np.load(os.path.join(os.path.dirname(__file__), "recording.npy"))
         #print outbrian
-        os.chdir(JNML_PATH)
+        if JNML_PATH:
+            os.chdir(JNML_PATH)
         outcommand = call("jnml {path} -nogui".format(path=os.path.join(current_path, xml_filename)),
                           shell=True)
         #print outcommand
