@@ -443,8 +443,15 @@ class NMLExporter(object):
     def add_synapses(self, obj):
         """
         Adds synapses to the model.
+
+        Parameters
+        ----------
+        obj : brian2.Synapse
+            Synapse object
         """
-        pass
+        synapse_ct = lems.ComponentType('Synapse')
+        dynamics_synapse = lems.Dynamics()
+        synapse_ct.add(dynamics_synapse)
 
     def add_population(self, net_id, component_id, type_, **args):
         """
