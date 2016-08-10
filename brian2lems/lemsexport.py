@@ -489,6 +489,26 @@ class NMLExporter(object):
                                            recordingsname='recording'):
         """
         From given *network* returns LEMS model object.
+
+        Parameters
+        ----------
+        network : str, optional
+            all brian objects collected into netowrk or None. In the
+            second case brian2 objects are collected autmatically from
+            the above scope.
+        namespace : dict
+            namespace variables defining extra model parameters
+        initializers : dict
+            all values which need to be initialized before simulation
+            running
+        constants_file : str, optional
+            file with units as constants definitions, if None an
+            LEMS_CONSTANTS_XML is added automatically
+        includes : list of str
+            all additional XML files added in preamble
+        recordingsname : str, optional
+            output of LEMS simulation recordings, values with extension
+            .dat and spikes with .spikes, default 'recording'
         """
         if network is None:
             net = Network(collect(level=1))
