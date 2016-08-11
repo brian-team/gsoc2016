@@ -361,14 +361,37 @@ class NeuroMLSimulation(object):
         return self.simulation.toprettyxml('  ', '\n')
 
 class NeuroMLSimpleNetwork(object):
-
+    '''
+    NeuroMLSimpleNetwork class representing network tag in NeuroML
+    syntax as a XML DOM representation.
+    '''
     def __init__(self, id_):
+        '''
+        NeuroMLSimpleNetwork object constructor.
+
+        Parameters
+        ----------
+        simid : str
+            network id.
+        '''
         self.doc = minidom.Document()
         self.network = self.doc.createElement('network')
         self.network.setAttribute("id", id_)
         self.components = []
     
     def add_component(self, id_, type_, **attributes):
+        '''
+        Adds a component to a network.
+
+        Parameters
+        ----------
+        id_ : str
+            component id
+        type_ : str
+            type of component
+        attributes : ..., optional
+            more attributes
+        '''
         component = self.doc.createElement('Component')
         component.setAttribute("id", id_)
         component.setAttribute("type", type_)
@@ -377,6 +400,15 @@ class NeuroMLSimpleNetwork(object):
         self.components.append(component)
 
     def build(self):
+        '''
+        Builds NeuroML DOM structure of network. It returns DOM
+        object.
+
+        Returns
+        -------
+        network : xml.minidom.dom
+            DOM representation of network.
+        '''
         for comp in self.components:
             self.network.appendChild(comp)
         return self.network
@@ -385,13 +417,31 @@ class NeuroMLSimpleNetwork(object):
         return self.network.toprettyxml('  ', '\n')
 
 class NeuroMLTarget(object):
-
+    '''
+    Makes XML of target of NeuroML2/LEMS simulation.
+    '''
     def __init__(self, component):
+        '''
+        NeuroMLTarget object constructor.
+
+        Parameters
+        ----------
+        component : str
+            target component
+        '''
         self.doc = minidom.Document()
         self.target = self.doc.createElement('Target')
         self.target.setAttribute("component", component)
 
     def build(self):
+        '''
+        Builds NeuroML DOM structure of target and returns it.
+
+        Returns
+        -------
+        target : xml.minidom.dom
+            DOM representation of target.
+        '''
         return self.target
 
     def __repr__(self):
