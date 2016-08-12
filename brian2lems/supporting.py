@@ -138,6 +138,9 @@ def read_nml_units(nmlcdpath=""):
             lems_units.append(uc.getAttribute('symbol'))
     return lems_units
 
+########################################
+# All NeuroML2 syntax creation helpers 
+########################################
 
 class NeuroMLSimulation(object):
     '''
@@ -415,6 +418,47 @@ class NeuroMLSimpleNetwork(object):
 
     def __repr__(self):
         return self.network.toprettyxml('  ', '\n')
+
+
+class NeuroMLPoissonGenerator(object):
+    '''
+    Makes XML of spikeGeneratorPoisson for NeuroML2/LEMS simulation.
+    '''
+    def __init__(self, poissid, average_rate):
+        '''
+        NeuroMLPoissonGenerator object constructor.
+
+        Parameters
+        ----------
+        poissid : str
+            generator id
+        average_rate : str or int
+            average rate of firing in Hz
+        '''
+        self.doc = minidom.Document()
+        self.generator = self.doc.createElement('spikeGeneratorPoisson')
+        self.generator.setAttribute("poissid", poissid)
+        if type(average_rate) == int:
+            average_rate = str(average_rate) + ' Hz'
+        if type(average_rate) == str:
+            if not average_rate.split(' ')[-1]=='Hz':
+                average_rate += ' Hz'
+        self.generator.setAttribute("averageRate", average_rate)
+
+    def build(self):
+        '''
+        Builds NeuroML DOM structure of spikeGeneratorPoisson and returns it.
+
+        Returns
+        -------
+        generator : xml.minidom.dom
+            DOM representation of generator.
+        '''
+        return self.generator
+
+    def __repr__(self):
+        return self.generator.toprettyxml('  ', '\n')
+
 
 class NeuroMLTarget(object):
     '''

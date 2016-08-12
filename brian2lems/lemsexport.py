@@ -528,7 +528,8 @@ class NMLExporter(object):
         state_monitors = [o for o in net.objects if type(o) is StateMonitor]
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
         synapses       = [o for o in net.objects if type(o) is Synapses]
-
+        poissoninput   = [o for o in net.objects if type(o) is PoissonInput]
+        print poissoninput
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
 
         # First step is to add individual neuron deifinitions and initialize
@@ -576,7 +577,7 @@ class NMLExporter(object):
 
     @property
     def model(self):
-        return self._model
+        return self._dommodel
 
 
 ########################################################################
