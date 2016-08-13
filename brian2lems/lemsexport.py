@@ -453,6 +453,17 @@ class NMLExporter(object):
         dynamics_synapse = lems.Dynamics()
         synapse_ct.add(dynamics_synapse)
 
+    def add_input(self, obj):
+        """
+        Adds input to the network.
+
+        Parameters
+        ----------
+        obj : brian2.NeuronGroup
+            neuronal input object
+        """
+        pass
+
     def add_population(self, net_id, component_id, type_, **args):
         """
         Sets population of neurons to resulting file.
@@ -529,7 +540,7 @@ class NMLExporter(object):
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
         synapses       = [o for o in net.objects if type(o) is Synapses]
         poissoninput   = [o for o in net.objects if type(o) is PoissonInput]
-        print poissoninput
+
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
 
         # First step is to add individual neuron deifinitions and initialize
@@ -660,6 +671,13 @@ class LEMSDevice(RuntimeDevice):
         """
         Collecting initializers and namespace from self.runs and passing
         it to the exporter.
+
+        Parameters
+        ----------
+        filename : str, optional
+            filename of exported xml model and recordings
+        direct_call : bool, optional
+            if call of the method was direct or not, default True
         """
         #if self.build_on_run and direct_call:
         #    raise RuntimeError('You used set_device with build_on_run=True '
