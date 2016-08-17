@@ -2,7 +2,7 @@ from brian2 import *
 from brian2lems.lemsexport import all_devices
 import numpy as np
 
-set_device('lemsdevice')
+set_device('lemsdevice', filename="ifcgmtest.xml")
 
 n = 100
 duration = 1*second
@@ -23,4 +23,3 @@ spikemonitor = SpikeMonitor(group, record=rec_idx)
 
 run(duration)
 
-device.build("ifcgmtest.xml")

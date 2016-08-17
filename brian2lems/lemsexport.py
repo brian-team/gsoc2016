@@ -615,6 +615,7 @@ class LEMSDevice(RuntimeDevice):
         self.assignments = []
         self.build_on_run = True
         self.build_options = None
+        self.has_been_run = False
 
     def reinit(self):
         build_on_run = self.build_on_run
@@ -656,6 +657,15 @@ class LEMSDevice(RuntimeDevice):
         assignments = list(self.assignments)
         self.assignments[:] = []
         self.runs.append((descriptions, duration, merged_namespace, assignments))
+        if self.build_on_run:
+            if self.has_been_run:
+                raise RuntimeError('The network has already been built and run '
+                                   'before. Use set_device with '
+                                   'build_on_run=False and an explicit '
+                                   'device.build call to use multiple run '
+                                   'statements with this device.')
+            self.build(direct_call=False, **self.build_options)
+        self.has_been_run = True
 
     def variableview_set_with_expression_conditional(self, variableview, cond, code,
                                                      run_namespace, check_units=True):
@@ -679,12 +689,12 @@ class LEMSDevice(RuntimeDevice):
         direct_call : bool, optional
             if call of the method was direct or not, default True
         """
-        #if self.build_on_run and direct_call:
-        #    raise RuntimeError('You used set_device with build_on_run=True '
-        #                       '(the default option), which will automatically '
-        #                       'build the simulation at the first encountered '
-        #                       'run call - do not call device.build manually '
-        #                       'in this case.')
+        if self.build_on_run and direct_call:
+            raise RuntimeError('You used set_device with build_on_run=True '
+                               '(the default option), which will automatically '
+                               'build the simulation at the first encountered '
+                               'run call - do not call device.build manually '
+                               'in this case.')
         initializers = {}
         for descriptions, duration, namespace, assignments in self.runs:
             for assignment in assignments:
