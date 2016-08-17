@@ -27,7 +27,7 @@ output_jnml_file = "recording_ifcgmtest"
 
 def simulation1(flag_device=False, path="", rec_idx=idx_to_record):
     if flag_device:
-        set_device('lemsdevice', filename=LEMS_OUTPUT_FILENAME)
+        set_device('neuroml2', filename=LEMS_OUTPUT_FILENAME)
     n = 100
     duration = 1*second
     tau = 10*ms
@@ -61,8 +61,8 @@ def test_simulation1():
 
     current_path = os.getcwd()
     tempdir = tempfile.mkdtemp()
-    outnml = simulation1(True, path=tempdir)
     outbrian = simulation1(False, path=tempdir)
+    outnml = simulation1(True, path=tempdir)
 
     if JNML_PATH:
         os.chdir(JNML_PATH)

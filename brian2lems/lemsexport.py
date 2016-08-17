@@ -740,4 +740,4 @@ class LEMSDevice(RuntimeDevice):
 
 
 lems_device = LEMSDevice()
-all_devices['lemsdevice'] = lems_device
+all_devices['neuroml2'] = lems_device

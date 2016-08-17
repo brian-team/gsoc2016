@@ -2,7 +2,7 @@ from brian2 import *
 from brian2lems.lemsexport import all_devices
 import numpy as np
 
-set_device('lemsdevice', filename="ifcgmtest.xml")
+set_device('neuroml2', filename="ifcgmtest.xml")
 
 n = 100
 duration = 1*second
@@ -17,9 +17,8 @@ group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
 group.v = 0*mV
 group.v0 = '20*mV * i / (N-1)'
 
-rec_idx = [2,63]
+rec_idx = [2, 63]
 statemonitor = StateMonitor(group, 'v', record=rec_idx)
 spikemonitor = SpikeMonitor(group, record=rec_idx)
 
 run(duration)
-
