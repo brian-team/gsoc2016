@@ -694,7 +694,7 @@ class LEMSDevice(RuntimeDevice):
     def variableview_set_with_index_array(self, variableview, item, value, check_units):
         self.assignments.append(('item', variableview.group.name, variableview.name, item, value))
 
-    def build(self, filename=None, direct_call=True):
+    def build(self, filename=None, direct_call=True, lems_const_save=True):
         """
         Collecting initializers and namespace from self.runs and passing
         it to the exporter.
@@ -705,6 +705,9 @@ class LEMSDevice(RuntimeDevice):
             filename of exported xml model and recordings
         direct_call : bool, optional
             if call of the method was direct or not, default True
+        lems_const_save : bool, optional
+            whether to save or not LEMSUnitsConstants.xml alongside with
+            output model file, default True
         """
         if self.build_on_run and direct_call:
             raise RuntimeError('You used set_device with build_on_run=True '
@@ -728,6 +731,12 @@ class LEMSDevice(RuntimeDevice):
                                                  initializers=initializers,
                                                  recordingsname=filename_)
         exporter.export_to_file(filename)
+        # currently NML2/LEMS model requires units stored as constants
+        # in a separate file
+        if lems_const_save:
+            with open(os.path.join(nmlcdpath, LEMS_CONSTANTS_XML), 'r') as f:
+                with open(LEMS_CONSTANTS_XML, 'w') as fout:
+                    fout.write(f.read())
 
 
 lems_device = LEMSDevice()
