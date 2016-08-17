@@ -3,6 +3,9 @@ from brian2lems.lemsexport import all_devices
 import numpy as np
 import argparse
 
+RECORDING_BRIAN_FILENAME = "recording"
+LEMS_OUTPUT_FILENAME     = "ifcgmtest.xml"
+
 parser = argparse.ArgumentParser(description='Set simulation flag')
 parser.add_argument("-d", "--device", action="store_true",
                     help="runs LEMS output building")
@@ -35,12 +38,11 @@ spikemonitor = SpikeMonitor(group, record=rec_idx)
 
 if flag_device:
     run(duration)
-    device.build("ifcgmtest.xml")
+    device.build(LEMS_OUTPUT_FILENAME)
 else:
     run(duration)
     recvec = []
     for ri in rec_idx:
         recvec.append(statemonitor[ri].v)
     recvec = np.asarray(recvec)
-    np.save("recording", recvec)
-
+    np.save(RECORDING_BRIAN_FILENAME, recvec)
