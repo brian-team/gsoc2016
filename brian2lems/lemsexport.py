@@ -17,7 +17,7 @@ import neuroml.writers as writers
 from lemsrendering import *
 from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
                        name_to_unit, NeuroMLSimulation, NeuroMLSimpleNetwork,\
-                       NeuroMLTarget
+                       NeuroMLTarget, NeuroMLPoissonGenerator
 from cgmhelper import *
 
 import numpy as np
@@ -42,7 +42,7 @@ BASE_POPULATION   = "basePopulation"
 
 nmlcdpath = os.path.dirname(__file__)  # path to NeuroMLCoreDimensions.xml file
 LEMS_CONSTANTS_XML = "LEMSUnitsConstants.xml"  # path to units constants
-
+LEMS_INPUTS = "Inputs.xml"
 nml_dims  = read_nml_dims(nmlcdpath=nmlcdpath)
 nml_units = read_nml_units(nmlcdpath=nmlcdpath)
 
@@ -119,7 +119,8 @@ class NMLExporter(object):
                                  'populationname': None,
                                  'networkname' : None,
                                  'targetname': None,
-                                 'simulname': None}
+                                 'simulname': None,
+                                 'poiss_generator': "poiss"}
 
     def _determine_parameters(self, paramdict):
         """
@@ -348,6 +349,9 @@ class NMLExporter(object):
                 # multi_ct.add(lems.Parameter(name=sp, dimension=self._all_params_unit[sp]))
                 # check if there are some units in equations
                 equation = special_properties[sp]
+                # add spaces around brackets to prevent mismatching
+                equation = re.sub("\(", " ( ", equation)
+                equation = re.sub("\)", " ) ", equation)
                 for i in get_identifiers(equation):
                     # iterator is a special case
                     if i == "i":
@@ -442,8 +446,8 @@ class NMLExporter(object):
 
     def add_synapses(self, obj):
         """
+        TO DO - not ready to use
         Adds synapses to the model.
-
         Parameters
         ----------
         obj : brian2.Synapse
@@ -453,16 +457,25 @@ class NMLExporter(object):
         dynamics_synapse = lems.Dynamics()
         synapse_ct.add(dynamics_synapse)
 
-    def add_input(self, obj):
+    def add_input(self, obj, counter=''):
         """
-        Adds input to the network.
+        Extends DOM model (*self._dommodel*) of Network Input.
+        Currently only PoissonInput support.
 
         Parameters
         ----------
         obj : brian2.NeuronGroup
             neuronal input object
+        counter : str or int, optional
+            number of object added to identifier
         """
-        pass
+        if isinstance(obj,PoissonInput):
+            name = '{}{}'.format(self._model_namespace['poiss_generator'], str(counter))
+            nml_poisson = NeuroMLPoissonGenerator(name, int(obj.rate))
+            nml_poisson = nml_poisson.build()
+            self._extend_dommodel(nml_poisson)
+        else:
+            raise NotImplementedError("Currently only PoissonInput supported.")
 
     def add_population(self, net_id, component_id, type_, **args):
         """
@@ -533,22 +546,26 @@ class NMLExporter(object):
         includes = set(includes)
         for incl in INCLUDES:
             includes.add(incl)
-        for incl in includes:
-            self.add_include(incl)
         neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
         state_monitors = [o for o in net.objects if type(o) is StateMonitor]
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
         synapses       = [o for o in net.objects if type(o) is Synapses]
-        poissoninput   = [o for o in net.objects if type(o) is PoissonInput]
+        netinputs      = [o for o in net.objects if type(o) is PoissonInput]
 
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
-
+        if len(netinputs)>0:
+            includes.add(LEMS_INPUTS)
+        for incl in includes:
+            self.add_include(incl)
         # First step is to add individual neuron deifinitions and initialize
         # them by MultiInstantiate
         for e, obj in enumerate(neuron_groups):
             self.add_neurongroup(obj, e, namespace, initializers)
         # DOM structure of the whole model is constructed below
         self._dommodel = self._model.export_to_dom()
+        # input support - currently only Poisson Inputs
+        for e, obj in enumerate(netinputs):
+            self.add_input(obj, counter=e)
         # A population should be created in *make_multiinstantiate*
         # so we can add it to our DOM structure.
         if self._population:
