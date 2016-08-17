@@ -2,10 +2,11 @@ import unittest
 import os
 import sys
 import platform
+import tempfile
 import numpy as np
 from subprocess import call
 from brian2 import *
-from brian2lems.supporting import *
+from brian2lems.lemsexport import all_devices
 import matplotlib.pyplot as plt
 
 from numpy.testing import assert_raises, assert_equal, assert_array_equal
@@ -13,6 +14,8 @@ from numpy.testing import assert_raises, assert_equal, assert_array_equal
 plain_numbers_from_list = lambda x: str(x)[1:-1].replace(',','')
 
 plot = False
+RECORDING_BRIAN_FILENAME = "recording"
+LEMS_OUTPUT_FILENAME     = "ifcgmtest.xml"
 
 if platform.system()=='Windows':
     JNML_PATH = "C:/jNeuroMLJar"
@@ -22,27 +25,49 @@ xml_filename = "ifcgmtest.xml"
 idx_to_record = [2, 55, 98]
 output_jnml_file = "recording_ifcgmtest"
 
+def simulation1(flag_device=False, path="", rec_idx=idx_to_record):
+    if flag_device:
+        set_device('lemsdevice', filename=LEMS_OUTPUT_FILENAME)
+    n = 100
+    duration = 1*second
+    tau = 10*ms
+
+    eqs = '''
+    dv/dt = (v0 - v) / tau : volt (unless refractory)
+    v0 : volt
+    '''
+    group = NeuronGroup(n, eqs, threshold='v > 10*mV', reset='v = 0*mV',
+                        refractory=5*ms, method='linear')
+    group.v = 0*mV
+    group.v0 = '20*mV * i / (N-1)'
+
+    statemonitor = StateMonitor(group, 'v', record=rec_idx)
+    spikemonitor = SpikeMonitor(group, record=rec_idx)
+    run(duration)
+
+    if not flag_device:
+        recvec = []
+        for ri in rec_idx:
+            recvec.append(statemonitor[ri].v)
+        recvec = np.asarray(recvec)
+        return recvec
+    else:
+        return None
+
 def test_simulation1():
     """
     Test example 1: simulation1_lif.py
     """
-    SCRIPT = "simulation1_lif.py"
-    RECORDING_BRIAN_FILENAME = "recording"
 
     current_path = os.getcwd()
-    outcommand = os.popen("python {file} -d --recidx {recidx}".format(file=SCRIPT,
-                                                                      recidx=plain_numbers_from_list(idx_to_record)))
-    outcommand = call("python {file} --recidx {recidx}".format(file=SCRIPT,
-                                                               recidx=plain_numbers_from_list(idx_to_record)),
-                      shell=True)
+    tempdir = tempfile.mkdtemp()
+    outnml = simulation1(True, path=tempdir)
+    outbrian = simulation1(False, path=tempdir)
 
-    outbrian = np.load(os.path.join(os.path.dirname(__file__), RECORDING_BRIAN_FILENAME+".npy"))
-    #print outbrian
     if JNML_PATH:
         os.chdir(JNML_PATH)
     outcommand = call("jnml {path} -nogui".format(path=os.path.join(current_path, xml_filename)),
                       shell=True)
-    #print outcommand
 
     timevec = []
     valuesvec = []
