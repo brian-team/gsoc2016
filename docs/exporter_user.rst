@@ -10,6 +10,7 @@ a model to NeuroML2/LEMS format.
 
 Working example
 ---------------
+
 As a demonstration we use simple unconnected Integrate&Fire neurons model with refractoriness
 and given initial values.
 

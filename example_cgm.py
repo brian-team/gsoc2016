@@ -1,6 +1,5 @@
 from brian2 import *
-from brian2lems.lemsexport import all_devices
-import numpy as np
+import brian2lems
 
 set_device('neuroml2', filename="ifcgmtest.xml")
 
