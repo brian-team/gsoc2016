@@ -17,7 +17,7 @@ and given initial values.
 .. code:: python
 
     from brian2 import *
-    from brian2lems.lemsexport import all_devices
+    import brian2lems
 
     set_device('neuroml2', filename="nml2model.xml")
 
@@ -40,33 +40,110 @@ and given initial values.
 
     run(duration)
 
-The use of exporter is pretty straightforward. You need to overwrite ``all_devices`` dictionary
-imported from ``brian2`` by importing it from ``brian2lems.lemsexport``.
+The use of exporter is pretty straightforward. You need to import a device
+parsing brian2 code from module ``brian2lems``.
 
-The next thing is to set a device called ``neuroml2`` which generates NeuroML2/LEMS code.
+The next thing is to set the device called ``neuroml2`` which generates NeuroML2/LEMS code.
 Note that you need to specify named argument ``filename`` with a name of your model.
 
 .. code:: python
 
-    from brian2lems.lemsexport import all_devices
+    import brian2lems
 
     set_device('neuroml2', filename="nml2model.xml")
 
-If you use StateMonitor to record some variables, it is transformed to ``Line`` at the ``Display`` of 
-NeuroML2 simulation and an ``OutputFile`` tag is added to the model. A name of the output file
-is ``recording_<<filename>>.dat``.
+The result of the above code have form of of file ``filename`` and extra file ``LEMSUnitsConstants.xml``
+with units definition in a form of constants (needed to properly parse equations).
 
-SpikeMonitor is parsed to ``EventOutputFile`` with name ``recording_<<filename>>.spikes``.
+Remember that you need to have ``NeuroML2CoreTypes`` folder in the same path as your XML model to take an advantage of NeuroML2 functionality.
+You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master/NeuroML2CoreTypes>`_ .
+
+.. code:: xml
+
+    <Lems>
+      <Include file="NeuroML2CoreTypes.xml"/>
+      <Include file="Simulation.xml"/>
+      <Include file="LEMSUnitsConstants.xml"/>
+      <ComponentType extends="baseCell" name="neuron1">
+        <Property dimension="voltage" name="v0"/>
+        <Property dimension="time" name="tau"/>
+        <EventPort direction="out" name="spike"/>
+        <Exposure dimension="voltage" name="v"/>
+        <Dynamics>
+          <StateVariable dimension="voltage" exposure="v" name="v"/>
+          <OnStart>
+            <StateAssignment value="0" variable="v"/>
+          </OnStart>
+          <Regime name="refractory">
+            <StateVariable dimension="time" name="lastspike"/>
+            <OnEntry>
+              <StateAssignment value="t" variable="lastspike"/>
+            </OnEntry>
+            <OnCondition test="t .gt. ( lastspike + 5.*ms )">
+              <Transition regime="integrating"/>
+            </OnCondition>
+          </Regime>
+          <Regime initial="true" name="integrating">
+            <TimeDerivative value="(v0 - v) / tau" variable="v"/>
+            <OnCondition test="v .gt. (10 * mV)">
+              <EventOut port="spike"/>
+              <StateAssignment value="0*mV" variable="v"/>
+              <Transition regime="refractory"/>
+            </OnCondition>
+          </Regime>
+        </Dynamics>
+      </ComponentType>
+      <ComponentType extends="basePopulation" name="neuron1Multi">
+        <Parameter dimension="time" name="tau_p"/>
+        <Parameter dimension="none" name="N"/>
+        <Constant dimension="voltage" name="mVconst" symbol="mVconst" value="1mV"/>
+        <Structure>
+          <MultiInstantiate componentType="neuron1" number="N">
+            <Assign property="v0" value="20*mVconst * index /  ( N-1 ) "/>
+            <Assign property="tau" value="tau_p"/>
+          </MultiInstantiate>
+        </Structure>
+      </ComponentType>
+      <network id="neuron1MultiNet">
+        <Component N="100" id="neuron1Multipop" tau_p="10. ms" type="neuron1Multi"/>
+      </network>
+      <Simulation id="sim1" length="1s" step="0.1 ms" target="neuron1MultiNet">
+        <Display id="disp0" timeScale="1ms" title="v" xmax="1000" xmin="0" ymax="11" ymin="0">
+          <Line id="line3" quantity="neuron1Multipop[3]/v" scale="1mV" timeScale="1ms"/>
+          <Line id="line64" quantity="neuron1Multipop[64]/v" scale="1mV" timeScale="1ms"/>
+        </Display>
+        <OutputFile fileName="recording_ifcgmtest.dat" id="of0">
+          <OutputColumn id="3" quantity="neuron1Multipop[3]/v"/>
+          <OutputColumn id="64" quantity="neuron1Multipop[64]/v"/>
+        </OutputFile>
+        <EventOutputFile fileName="recording_ifcgmtest.spikes" format="TIME_ID" id="eof">
+          <EventSelection eventPort="spike" id="line3" select="neuron1Multipop[3]"/>
+          <EventSelection eventPort="spike" id="line64" select="neuron1Multipop[64]"/>
+        </EventOutputFile>
+      </Simulation>
+      <Target component="sim1"/>
+    </Lems>
+
+To validate the output we recommend to use `jNeuroML <https://github.com/NeuroML/jNeuroML>`_ parser.
+
+Supported Features
+------------------
+
+Currently exporter supports such brian2 objects like:
+
+- ``NeuronGroup`` - Used to specify definition of a cell. Mechanism like threshold, reset or refractoriness are taken into account. Moreover, you may set your model parameters (like ``v0`` above) arbitrary initial values.
+
+- ``StateMonitor`` - If you use StateMonitor to record some variables, it is transformed to ``Line`` at the ``Display`` of  NeuroML2 simulation and an ``OutputFile`` tag is added to the model. A name of the output file is ``recording_<<filename>>.dat``.
+
+- ``SpikeMonitor`` - SpikeMonitor is parsed to ``EventOutputFile`` with name ``recording_<<filename>>.spikes``.
 
 Limitations
 -----------
 
-Currently you should avoid exporting models with:
+Things to be implemented in the future:
 
 - synapses
 
 - network input
 
 - multiple runs of simulation
-
-Fixing those issues is in progress.
