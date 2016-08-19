@@ -204,4 +204,13 @@ TODO
 
 - synapses support;
 
+First attempt to make synapses export work was made during GSOC period. The problem with that
+feature is related to the fact that NeuroML and brian2 internal synapses implementation differs substantially.
+For instance, in NeuroML there are no predefined rules for connections, but user needs to explicitly define a synapse.
+Moreover, in brian2, for efficiency reasons, postsynaptic spikes are defined by default,
+which is different from NeuroML approach, where not much attention is paid to simulation speed.
+
 - network input support;
+
+Although there are some classes supporting ``PoissonInput`` in the ``supporting.py``, full functionality
+of  input is still not provided, as it is stongly linked with above synapses problems.

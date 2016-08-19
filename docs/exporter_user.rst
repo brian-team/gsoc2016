@@ -124,13 +124,18 @@ You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master
       <Target component="sim1"/>
     </Lems>
 
-To validate the output we recommend to use `jNeuroML <https://github.com/NeuroML/jNeuroML>`_ parser.
+One important thing to notice is that the exporting device creates a new ``ComponentType`` for each
+cell definition as a brian2 ``NeuronGroup``. Later that ``ComponentType`` is initialized as a new one
+(here called ``neuron1Multi``) by ``MultiInstantiate`` and eventually a network (```neuron1MultiNet``) 
+is created out of defined component (``neuron1Multipop``).
+
+To validate the output we recommend to use a tool `jNeuroML <https://github.com/NeuroML/jNeuroML>`_.
 
 After successful installation of the package, type in your terminal:
 
 .. code:: bash
 
-    jnml <<filename>>.xml
+    jnml filename.xml
 
 to run the simulation.
 
