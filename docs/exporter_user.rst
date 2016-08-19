@@ -112,11 +112,11 @@ You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master
           <Line id="line3" quantity="neuron1Multipop[3]/v" scale="1mV" timeScale="1ms"/>
           <Line id="line64" quantity="neuron1Multipop[64]/v" scale="1mV" timeScale="1ms"/>
         </Display>
-        <OutputFile fileName="recording_ifcgmtest.dat" id="of0">
+        <OutputFile fileName="recording_nml2model.dat" id="of0">
           <OutputColumn id="3" quantity="neuron1Multipop[3]/v"/>
           <OutputColumn id="64" quantity="neuron1Multipop[64]/v"/>
         </OutputFile>
-        <EventOutputFile fileName="recording_ifcgmtest.spikes" format="TIME_ID" id="eof">
+        <EventOutputFile fileName="recording_nml2model.spikes" format="TIME_ID" id="eof">
           <EventSelection eventPort="spike" id="line3" select="neuron1Multipop[3]"/>
           <EventSelection eventPort="spike" id="line64" select="neuron1Multipop[64]"/>
         </EventOutputFile>

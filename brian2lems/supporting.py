@@ -36,7 +36,7 @@ def from_string(rep):
     if m:
         unit = rep[0:m.end()].strip()
         # special case with per
-        if unit=='per':
+        if unit == 'per':
             mper = re.match(' ?per_([a-zA-Z]+)', rep)
             per = rep[0:mper.end()].strip()[4:]
             m = mper
@@ -61,7 +61,7 @@ def from_string(rep):
 
 def brian_unit_to_lems(valunit):
     """
-    Returns string representation of LEMS unit where * is between 
+    Returns string representation of LEMS unit where * is between
     value and unit e.g. "20. mV" -> "20.*mV".
 
     Parameters
@@ -74,9 +74,9 @@ def brian_unit_to_lems(valunit):
     valstr : `str`
         string representation of LEMS unit
     """
-    if float(valunit)==0:
+    if float(valunit) == 0:
         return '0'
-    if type(valunit)!=str:
+    if type(valunit) != str:
         valunit = str(valunit)
     return valunit.replace(' ', '*')
 
@@ -101,7 +101,7 @@ def read_nml_dims(nmlcdpath=""):
     domtree = minidom.parse(path)
     collection = domtree.documentElement
     dimsCollection = collection.getElementsByTagName("Dimension")
-    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3, "k":4, "n":5, "j":6}
+    order_dict = {"m": 1, "l": 0, "t": 2, "i": 3, "k": 4, "n": 5, "j": 6}
     lems_dimensions = dict()
     for dc in dimsCollection:
         name_ = dc.getAttribute("name")
@@ -139,8 +139,9 @@ def read_nml_units(nmlcdpath=""):
     return lems_units
 
 ########################################
-# All NeuroML2 syntax creation helpers 
+# All NeuroML2 syntax creation helpers
 ########################################
+
 
 class NeuroMLSimulation(object):
     '''
@@ -363,6 +364,7 @@ class NeuroMLSimulation(object):
     def __repr__(self):
         return self.simulation.toprettyxml('  ', '\n')
 
+
 class NeuroMLSimpleNetwork(object):
     '''
     NeuroMLSimpleNetwork class representing network tag in NeuroML
@@ -381,7 +383,7 @@ class NeuroMLSimpleNetwork(object):
         self.network = self.doc.createElement('network')
         self.network.setAttribute("id", id_)
         self.components = []
-    
+
     def add_component(self, id_, type_, **attributes):
         '''
         Adds a component to a network.
@@ -441,7 +443,7 @@ class NeuroMLPoissonGenerator(object):
         if type(average_rate) == int:
             average_rate = str(average_rate) + ' Hz'
         if type(average_rate) == str:
-            if not average_rate.split(' ')[-1]=='Hz':
+            if not average_rate.split(' ')[-1] == 'Hz':
                 average_rate += ' Hz'
         self.generator.setAttribute("averageRate", average_rate)
 
@@ -511,8 +513,8 @@ if __name__ == '__main__':
     nmlsim.add_eventselection('1', '[5]')
     nmlsim.build()
     print '+',
-    #test NeuroMLSimpleNetwork
+    # test NeuroMLSimpleNetwork
     nmlnet = NeuroMLSimpleNetwork("net")
-    nmlnet.add_component("i0", "lf", a=3,b=4)
+    nmlnet.add_component("i0", "lf", a=3, b=4)
     nmlnet.build()
     print '+',

@@ -11,8 +11,6 @@ from brian2.units.fundamentalunits import _siprefixes
 from brian2.utils.stringtools import get_identifiers
 
 import lems.api as lems
-import neuroml
-import neuroml.writers as writers
 
 from lemsrendering import *
 from supporting import read_nml_units, read_nml_dims, brian_unit_to_lems,\
@@ -66,7 +64,7 @@ def _determine_dimension(value):
         if value.has_same_dimensions(nml_dims[dim]):
             return dim
     else:
-        if value==1:
+        if value == 1:
             # dimensionless
             return "none"
         else:
@@ -84,6 +82,7 @@ def _to_lems_unit(unit):
         strunit = strunit[3:]               # here we substract '1. '
     strunit = strunit.replace('^', '')  # in LEMS there is no ^
     return strunit
+
 
 def _equation_separator(equation):
     """
@@ -117,7 +116,7 @@ class NMLExporter(object):
         self._model_namespace = {'neuronname': None,
                                  'ct_populationname': None,
                                  'populationname': None,
-                                 'networkname' : None,
+                                 'networkname': None,
                                  'targetname': None,
                                  'simulname': None,
                                  'poiss_generator': "poiss"}
@@ -173,7 +172,7 @@ class NMLExporter(object):
             oc = lems.OnCondition(renderer.render_expr(events[ev]))
             oc.add_action(event_out)
             # if event is not in model ports we should add it
-            if not ev in self._component_type.event_ports:
+            if ev not in self._component_type.event_ports:
                 self._component_type.add(lems.EventPort(name=ev, direction='out'))
             if ev in event_codes:
                 for ec in re.split(';|\n', event_codes[ev]):
@@ -183,11 +182,11 @@ class NMLExporter(object):
             if ev == SPIKE:
                 spike_flag = True
             yield (spike_flag, oc)
-    
+
     def add_neurongroup(self, obj, idx_of_ng, namespace, initializers):
         """
         Adds NeuronGroup object *obj* to self._model.
-        
+
         If number of elements is 1 it adds component of that type, if
         it's bigger, the network is created by calling:
         `make_multiinstantiate`.
@@ -205,7 +204,7 @@ class NMLExporter(object):
         """
         if hasattr(obj, "namespace") and not obj.namespace:
             obj.namespace = namespace
-        self._nr_of_neurons = obj.N # maybe not the most robust solution
+        self._nr_of_neurons = obj.N  # maybe not the most robust solution
         ct_name = "neuron{}".format(idx_of_ng+1)
         self._model_namespace["neuronname"] = ct_name
         self._component_type = lems.ComponentType(ct_name, extends=BASE_CELL)
@@ -246,7 +245,7 @@ class NMLExporter(object):
         for var in obj.equations.names:
             if var in (NOT_REFRACTORY, LAST_SPIKE):
                 continue
-            if not var in initializers:
+            if var not in initializers:
                 continue
             if var in special_properties:
                 continue
@@ -356,7 +355,7 @@ class NMLExporter(object):
                     # iterator is a special case
                     if i == "i":
                         regexp_noletter = "[^a-zA-Z0-9]"
-                        equation = re.sub("{re}i{re}".format(re=regexp_noletter),\
+                        equation = re.sub("{re}i{re}".format(re=regexp_noletter),
                                                   " {} ".format(INDEX), equation)
                     # here it's assumed that we don't use Netwton in neuron models
                     elif i in name_to_unit and i != "N":
@@ -370,7 +369,6 @@ class NMLExporter(object):
         self._model.add(multi_ct)
         param_dict = dict([(k+"_p", v) for k, v in param_dict.items()])
         param_dict["N"] = self._nr_of_neurons
-        #self._model.add(lems.Component(name+"Multi", name+"network", **param_dict))
         self._model_namespace["populationname"] = self._model_namespace["ct_populationname"] + "pop"
         self._model_namespace["networkname"] = self._model_namespace["ct_populationname"] + "Net"
         self.add_population(self._model_namespace["networkname"],
@@ -396,9 +394,11 @@ class NMLExporter(object):
             display, default False
         """
         filename += '.dat'
-        indices = np.asarray(obj.record).copy()
+        indices = obj.record
         if isinstance(indices, bool) and indices == True:
             indices = np.arange(self._nr_of_neurons)
+        else:
+            indices = np.asarray(indices).copy()
         indices += 1
         variables = obj.needed_variables
         # step of integration
@@ -412,14 +412,14 @@ class NMLExporter(object):
             for i in indices:
                 # scale, time_scale ???
                 self._simulation.add_line("line{}".format(i),
-                                          "{}[{}]/v".format(self._model_namespace["populationname"],i))
+                                          "{}[{}]/v".format(self._model_namespace["populationname"], i))
                 if outputfile:
                     self._simulation.add_outputcolumn("{}".format(i),
-                                                      "{}[{}]/v".format(self._model_namespace["populationname"],i))
+                                                      "{}[{}]/v".format(self._model_namespace["populationname"], i))
 
     def add_spikemonitor(self, obj, filename="recording"):
         """
-        From SpikeMonitor object extracts indices to recording in LEMS 
+        From SpikeMonitor object extracts indices to recording in LEMS
         simulation.
 
         Make sure before calling that *simulation* object is created.
@@ -432,17 +432,19 @@ class NMLExporter(object):
             name of output file without extension, default 'recording'
         """
         filename += '.spikes'
-        indices = np.asarray(obj.record).copy()
-        if isinstance(indices, bool) and indices == True:
+        indices = obj.record
+        if isinstance(indices, bool) and indices is True:
             indices = np.arange(self._nr_of_neurons)
+        else:
+            indices = np.asarray(indices).copy()
         indices += 1
         variables = obj.needed_variables
         self._simulation.add_eventoutputfile("eof", filename)
         # adding eventselection for each recorded neuron
         for i in indices:
             self._simulation.add_eventselection("line{}".format(i),
-                    "{}[{}]".format(self._model_namespace["populationname"],i),
-                    event_port = "spike")
+                    "{}[{}]".format(self._model_namespace["populationname"], i),
+                    event_port="spike")
 
     def add_synapses(self, obj):
         """
@@ -507,7 +509,7 @@ class NMLExporter(object):
             name of the file to include
         """
         self._model.add(lems.Include(includefile))
-    
+
     def create_lems_model(self, network=None, namespace={}, initializers={},
                                            constants_file=None, includes=[],
                                            recordingsname='recording'):
@@ -553,7 +555,7 @@ class NMLExporter(object):
         netinputs      = [o for o in net.objects if type(o) is PoissonInput]
 
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
-        if len(netinputs)>0:
+        if len(netinputs) > 0:
             includes.add(LEMS_INPUTS)
         for incl in includes:
             self.add_include(incl)
@@ -575,7 +577,7 @@ class NMLExporter(object):
         self._model_namespace['simulname'] = "sim1"
         self._simulation = NeuroMLSimulation(self._model_namespace['simulname'],
                                              self._model_namespace['networkname'])
-        
+
         for e, obj in enumerate(state_monitors):
             self.add_statemonitor(obj, filename=recordingsname, outputfile=True)
         for e, obj in enumerate(spike_monitors):
@@ -585,13 +587,12 @@ class NMLExporter(object):
         target = NeuroMLTarget(self._model_namespace['simulname'])
         target = target.build()
         self._extend_dommodel(target)
-        #message = "{} currently not supported ".format(str(type(obj))) #warnings.warn(message)
 
     def export_to_file(self, filename):
         """
         Exports model to file *filename*
         """
-        if len(filename.split("."))==1:
+        if len(filename.split(".")) == 1:
             filename += ".xml"
         xmlstring = self._dommodel.toprettyxml("  ", "\n")
         with open(filename, "w") as f:
@@ -613,6 +614,7 @@ class NMLExporter(object):
 ########################################################################
 
 INCLUDES = ["Simulation.xml", "NeuroML2CoreTypes.xml"]
+
 
 class DummyCodeObject(object):
     def __init__(self, *args, **kwds):
@@ -722,7 +724,7 @@ class LEMSDevice(RuntimeDevice):
                     initializers[assignment[2]] = assignment[-1]
         if len(self.runs) > 1:
             raise NotImplementedError("Currently only single run is supported.")
-        if len(filename.split("."))!=1:
+        if len(filename.split(".")) != 1:
             filename_ = 'recording_' + filename.split(".")[0]
         else:
             filename_ = 'recording_' + filename
