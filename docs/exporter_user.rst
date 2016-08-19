@@ -2,7 +2,11 @@ Brian2NeuroML exporter
 ======================
 
 This is a short overview of Brian2 supporting package providing functionality of exporting
-a model to NeuroML2/LEMS format.
+a model to NeuroML2/LEMS format. 
+
+The NeuroML is a XML based description that provides a common data format 
+for defining and exchanging descriptions of neuronal cell and network models 
+(`NML project website <https://neuroml.org/>`_).
 
 .. contents::
     Overview
@@ -54,9 +58,6 @@ Note that you need to specify named argument ``filename`` with a name of your mo
 
 The result of the above code have form of of file ``filename`` and extra file ``LEMSUnitsConstants.xml``
 with units definition in a form of constants (needed to properly parse equations).
-
-Remember that you need to have ``NeuroML2CoreTypes`` folder in the same path as your XML model to take an advantage of NeuroML2 functionality.
-You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master/NeuroML2CoreTypes>`_ .
 
 .. code:: xml
 
@@ -125,11 +126,15 @@ You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master
     </Lems>
 
 One important thing to notice is that the exporting device creates a new ``ComponentType`` for each
-cell definition as a brian2 ``NeuronGroup``. Later that ``ComponentType`` is initialized as a new one
-(here called ``neuron1Multi``) by ``MultiInstantiate`` and eventually a network (```neuron1MultiNet``) 
-is created out of defined component (``neuron1Multipop``).
+cell definition implemented as a brian2 ``NeuronGroup``. Later that particular ``ComponentType`` is initialized as a new one
+(here called ``neuron1Multi``) by ``MultiInstantiate`` and eventually a network (``neuron1MultiNet``) 
+is created out of a defined component (``neuron1Multipop``).
+
+Note also that the integration method does not matter for the NeuroML export,
+as NeuroML/LEMS only describes the model not how it is numerically integrated.
 
 To validate the output we recommend to use a tool `jNeuroML <https://github.com/NeuroML/jNeuroML>`_.
+Make sure that the ``jnml`` have access to ``NeuroML2CoreTypes`` folder.
 
 After successful installation of the package, type in your terminal:
 
