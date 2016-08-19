@@ -126,6 +126,15 @@ You may download it from `here  <https://github.com/NeuroML/NeuroML2/tree/master
 
 To validate the output we recommend to use `jNeuroML <https://github.com/NeuroML/jNeuroML>`_ parser.
 
+After successful installation of the package, type in your terminal:
+
+.. code:: bash
+
+    jnml <<filename>>.xml
+
+to run the simulation.
+
+
 Supported Features
 ------------------
 

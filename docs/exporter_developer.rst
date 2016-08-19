@@ -195,9 +195,8 @@ constants in a separate file which is included in the model file header.
 Other modules
 -------------
 
-For other scripts included in package, like ``lemsrendering.py``, 
-``supporting.py``, ``cgmhelper.py`` please read their docstrings to know 
-more about functionalities of function and classes they contain.
+If you want to know more about other scripts included in package ( ``lemsrendering.py``, 
+``supporting.py``, ``cgmhelper.py``), please read their docstrings or comments included in the code.
 
 
 TODO
