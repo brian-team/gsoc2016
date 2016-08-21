@@ -553,7 +553,10 @@ class NMLExporter(object):
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
         synapses       = [o for o in net.objects if type(o) is Synapses]
         netinputs      = [o for o in net.objects if type(o) is PoissonInput]
-
+        if len(synapses) > 0:
+            logger.warn("Synpases export functionality is not implemented yet.")
+        if len(netinputs) > 0:
+            logger.warn("Network Input export functionality is not implemented yet.")
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
         if len(netinputs) > 0:
             includes.add(LEMS_INPUTS)
