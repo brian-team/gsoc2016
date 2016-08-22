@@ -551,13 +551,20 @@ class NMLExporter(object):
         neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
         state_monitors = [o for o in net.objects if type(o) is StateMonitor]
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
+        
+        for o in net.objects:
+            if type(o) not in [NeuronGroup, StateMonitor, SpikeMonitor,
+                               Thresholder, Resetter, StateUpdater]:
+                logger.warn("""{} export functionality
+                               is not implemented yet.""".format(type(o).__name__))
+        # --- not fully implemented
         synapses       = [o for o in net.objects if type(o) is Synapses]
         netinputs      = [o for o in net.objects if type(o) is PoissonInput]
-        if len(synapses) > 0:
-            logger.warn("Synpases export functionality is not implemented yet.")
-        if len(netinputs) > 0:
-            logger.warn("Network Input export functionality is not implemented yet.")
-        # Thresholder, Resetter, StateUpdater are not interesting from our perspective
+        # ---
+        #if len(synapses) > 0:
+        #    logger.warn("Synpases export functionality is not implemented yet.")
+        #if len(netinputs) > 0:
+        #    logger.warn("Network Input export functionality is not implemented yet.")
         if len(netinputs) > 0:
             includes.add(LEMS_INPUTS)
         for incl in includes:
