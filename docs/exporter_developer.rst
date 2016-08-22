@@ -36,8 +36,12 @@ parsing and passes them to respective methods.
         neuron_groups  = [o for o in net.objects if type(o) is NeuronGroup]
         state_monitors = [o for o in net.objects if type(o) is StateMonitor]
         spike_monitors = [o for o in net.objects if type(o) is SpikeMonitor]
-        synapses       = [o for o in net.objects if type(o) is Synapses]
-        netinputs      = [o for o in net.objects if type(o) is PoissonInput]
+        
+        for o in net.objects:
+            if type(o) not in [NeuronGroup, StateMonitor, SpikeMonitor,
+                               Thresholder, Resetter, StateUpdater]:
+                logger.warn("""{} export functionality
+                               is not implemented yet.""".format(type(o).__name__))
 
         # Thresholder, Resetter, StateUpdater are not interesting from our perspective
         if len(netinputs)>0:
